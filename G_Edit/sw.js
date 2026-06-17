@@ -13,7 +13,7 @@
  * mis en cache risquent de ne pas se rafraîchir correctement.
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `g-edit-cache-${CACHE_VERSION}`;
 
 // Fichiers de l'appli elle-même (même origine que GitHub Pages).
