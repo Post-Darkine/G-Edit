@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="app-title">G'Edit - Éditeur PDF interactif</title>
+    
+    <script>
+        // Applique le thème sombre dès le chargement si l'utilisateur l'a choisi précédemment
+        if (localStorage.getItem('gedit-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+
+    <!-- Favicon (Logo en Cygne Origami) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNGY0NmU1IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTMgMTloMThsLTUtNy01IDQtNi01eiIvPjxwYXRoIGQ9Ik0zIDE5bDgtMyAxMCAzIi8+PHBhdGggZD0iTTExIDE2bDItMTIgNSAyLTMgMiAxIDQiLz48L3N2Zz4=">
+
+    <!-- PWA : manifest, icônes et meta tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="G'Edit">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PDF.js Text Layer CSS pour la superposition invisible du texte -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf_viewer.min.css">
+    
+    <!-- Tailwind CSS pour le style -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] }
+            }
+        }
+    </script>
+    
+    <!-- Bibliothèques nécessaires -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; font-size: 13px; }
+        
+        .workspace-bg {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        html.dark .workspace-bg {
+            background-color: #0f172a;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+        }
+        
+        .canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 3rem;
+            height: calc(100vh - 4rem);
+            overflow: auto;
+            touch-action: pan-x pan-y; 
+        }
+        
+        #page-container {
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.05);
+            background-color: white; 
+            border-radius: 4px;
+            position: relative;
+        }
+        html.dark #page-container {
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.1);
+        }
+
+        #text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #text-layer.rewrite-mode {
+            pointer-events: auto;
+        }
+        #text-layer.rewrite-mode span {
+            cursor: text;
+            pointer-events: auto;
+        }
+        #text-layer.rewrite-mode span:hover {
+            background-color: rgba(168, 85, 247, 0.2); 
+            border-radius: 2px;
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+        }
+        html.dark #text-layer.rewrite-mode span:hover {
+            background-color: rgba(34, 211, 238, 0.2); 
+            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
+        }
+        
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f8fafc; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; border-color: #0f172a; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .tool-active {
+            background-color: #e0e7ff !important;
+            color: #3730a3 !important;
+            box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+        }
+        html.dark .tool-active {
+            background-color: rgba(6, 182, 212, 0.2) !important;
+            color: #22d3ee !important; 
+            box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.2);
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+
+    <!-- Barre d'outils supérieure -->
+    <header class="bg-white/90 dark:bg-slate-800/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 h-16 flex items-center justify-between px-3 md:px-5 shadow-sm z-50 shrink-0 gap-2 relative transition-colors">
+        <div class="flex items-center gap-3 md:gap-5 min-w-0 flex-1">
+            <button id="btn-mobile-menu" class="md:hidden p-1.5 -ml-1 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-200 rounded-lg transition-colors shrink-0" onclick="event.stopPropagation(); toggleMobileMenu();">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Logo -->
+            <div class="flex items-center gap-2 min-w-0 shrink-0 cursor-pointer group" onclick="openSettingsModal()" title="Paramètres" data-i18n-title="title-settings">
+                <div class="bg-indigo-600 dark:bg-cyan-600 group-hover:bg-indigo-700 dark:group-hover:bg-cyan-500 transition-colors text-white p-1.5 rounded-lg shadow-sm shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                        <path d="M3 19h18l-5-7-5 4-6-5z"/>
+                        <path d="M3 19l8-3 10 3"/>
+                        <path d="M11 16l2-12 5 2-3 2 1 4"/>
+                    </svg>
+                </div>
+                <span class="font-bold text-base tracking-tight text-slate-900 dark:text-white hidden md:block truncate group-hover:text-indigo-600 dark:group-hover:text-cyan-400 transition-colors">G'Edit</span>
+            </div>
+
+            <!-- Bouton Ouvrir un autre avec menu déroulant -->
+            <div id="btn-open-other" class="hidden items-center bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors min-w-0 max-w-[200px] md:max-w-none relative">
+                <button class="flex items-center gap-2 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-600 px-2.5 py-1.5 rounded-l-lg text-[13px] font-medium transition-colors cursor-pointer min-w-0 border-r border-slate-300 dark:border-slate-600" onclick="openAnotherPDF()">
+                    <i data-lucide="folder-open" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span class="hidden md:block truncate" data-i18n="open-pdf-btn">Ouvrir un PDF/Projet</span>
+                </button>
+                <button id="btn-header-dropdown-toggle" class="flex items-center justify-center px-1.5 py-1.5 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-600 rounded-r-lg transition-colors cursor-pointer shrink-0">
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 shrink-0"></i>
+                </button>
+
+                <div id="header-dropdown-menu" class="hidden absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden z-30 flex flex-col">
+                    <button class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full min-w-0" onclick="createBlankPDF()">
+                        <i data-lucide="file-plus" class="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400 shrink-0"></i>
+                        <span class="truncate" data-i18n="blank-pdf">PDF vierge</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full min-w-0" onclick="alert(i18n[currentLang]['alert-merge'])">
+                        <i data-lucide="layers" class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0"></i>
+                        <span class="truncate" data-i18n="merge-pdf">Fusionner</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full min-w-0" onclick="alert(i18n[currentLang]['alert-compress'])">
+                        <i data-lucide="minimize" class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0"></i>
+                        <span class="truncate" data-i18n="compress-pdf">Compresser</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outils centraux -->
+        <div id="tools-menu" class="hidden md:flex flex-col md:flex-row absolute md:static top-16 md:top-auto left-3 md:left-auto w-56 md:w-auto bg-white dark:bg-slate-800 md:bg-slate-100 md:dark:bg-slate-800 shadow-xl md:shadow-none z-50 rounded-xl border border-slate-100 md:border-slate-200/60 dark:border-slate-700 md:dark:border-slate-700 p-2 md:p-1 gap-1 md:gap-0 shrink-0 items-stretch md:items-center transition-colors">
+            
+            <!-- Undo / Redo -->
+            <div class="flex items-center gap-0.5 border-r border-slate-200/60 dark:border-slate-700 md:pr-1 md:mr-1 shrink-0 w-full md:w-auto justify-center">
+                <button id="btn-undo" class="toolbar-btn flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 transition-all disabled:cursor-not-allowed" disabled onclick="undo()" data-i18n-title="title-undo" title="Annuler (Ctrl+Z)">
+                    <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <button id="btn-redo" class="toolbar-btn flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 transition-all disabled:cursor-not-allowed" disabled onclick="redo()" data-i18n-title="title-redo" title="Rétablir (Ctrl+Y)">
+                    <i data-lucide="redo-2" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+
+            <!-- Edit Group -->
+            <div class="relative flex items-center min-w-0 shrink-0 w-full md:w-auto">
+                <button id="btn-edit-dropdown" class="toolbar-btn flex items-center justify-center pl-2.5 pr-1.5 py-1.5 md:pl-1.5 md:pr-1 rounded-l-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 disabled:opacity-40 transition-all text-slate-600 dark:text-slate-300 disabled:cursor-not-allowed min-w-0 border-r border-slate-200 md:border-slate-400 dark:border-slate-700 md:dark:border-slate-600" disabled>
+                    <i data-lucide="chevron-down" class="w-3 h-3 shrink-0"></i>
+                </button>
+                <button id="btn-edit" class="toolbar-btn tool-active flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-r-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 flex-1 md:flex-none justify-start md:justify-center" disabled onclick="setActiveTool(currentEditMode)">
+                    <i id="edit-icon" data-lucide="mouse-pointer-2" class="w-3.5 h-3.5 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="btn-edit">Edit</span>
+                </button>
+                
+                <div id="edit-dropdown-menu" class="hidden absolute top-full left-0 md:left-auto mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden z-[60] flex flex-col">
+                    <button class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full" onclick="setEditMode('select')">
+                        <i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400 shrink-0"></i> <span data-i18n="edit-manipulate">Manipuler</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full" onclick="setEditMode('text-select')">
+                        <i data-lucide="text-cursor" class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0"></i> <span data-i18n="edit-copy">Copier texte original</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full" onclick="setEditMode('rewrite')">
+                        <i data-lucide="wand-2" class="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 shrink-0"></i> <span data-i18n="edit-rewrite">Réécriture (Remplacer)</span>
+                    </button>
+                </div>
+            </div>
+            <div class="h-px w-full md:w-px md:h-4 bg-slate-100 md:bg-slate-300 dark:bg-slate-700 md:dark:bg-slate-600 my-1 md:mx-0.5 shrink-0"></div>
+
+            <button id="btn-text" class="toolbar-btn flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 w-full md:w-auto justify-start md:justify-center" disabled onclick="setActiveTool('text')">
+                <i data-lucide="type" class="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-text">Texte</span>
+            </button>
+            <button id="btn-image" class="toolbar-btn flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 w-full md:w-auto justify-start md:justify-center" disabled>
+                <i data-lucide="image" class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-image">Image</span>
+            </button>
+            
+            <!-- Masquer Group -->
+            <div class="relative flex items-center min-w-0 shrink-0 w-full md:w-auto">
+                <button id="btn-mask-dropdown" class="toolbar-btn flex items-center justify-center pl-2.5 pr-1.5 py-1.5 md:pl-1.5 md:pr-1 rounded-l-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 disabled:opacity-40 transition-all text-slate-600 dark:text-slate-300 disabled:cursor-not-allowed min-w-0 border-r border-slate-200 md:border-slate-400 dark:border-slate-700 md:dark:border-slate-600" disabled>
+                    <i data-lucide="chevron-down" class="w-3 h-3 shrink-0"></i>
+                </button>
+                <button id="btn-mask" class="toolbar-btn flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-r-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 flex-1 md:flex-none justify-start md:justify-center" disabled onclick="setActiveTool('mask')">
+                    <i id="mask-icon" data-lucide="square" class="w-3.5 h-3.5 fill-slate-800 text-slate-800 dark:fill-slate-300 dark:text-slate-300 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-mask">Masquer</span>
+                </button>
+                
+                <div id="mask-dropdown-menu" class="hidden absolute top-full left-0 md:left-auto mt-1 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden z-[60] flex flex-col">
+                    <button class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full" onclick="setMaskColor('#000000')">
+                        <div class="w-3.5 h-3.5 bg-black rounded border border-slate-300 dark:border-slate-600 shrink-0"></div> <span data-i18n="mask-black">Noir</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full" onclick="setMaskColor('#ffffff')">
+                        <div class="w-3.5 h-3.5 bg-white rounded border border-slate-300 dark:border-slate-600 shrink-0"></div> <span data-i18n="mask-white">Blanc</span>
+                    </button>
+                </div>
+            </div>
+
+            <button id="btn-highlight" class="toolbar-btn flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 md:hover:bg-white dark:hover:bg-slate-700 md:dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 w-full md:w-auto justify-start md:justify-center" disabled onclick="setActiveTool('highlight')">
+                <i data-lucide="highlighter" class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-highlight">Surligner</span>
+            </button>
+            <div class="h-px w-full md:w-px md:h-4 bg-slate-100 md:bg-slate-300 dark:bg-slate-700 md:dark:bg-slate-600 my-1 md:mx-0.5 shrink-0"></div>
+            <button id="btn-delete" class="toolbar-btn flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-400 text-rose-600 dark:text-rose-500 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 w-full md:w-auto justify-start md:justify-center" disabled>
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-delete">Supprimer</span>
+            </button>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 md:gap-3 shrink-0 min-w-0 flex-1">
+            <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1 border border-slate-200/60 dark:border-slate-600 shrink-0">
+                <button id="btn-prev" class="p-1 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-40 disabled:hover:bg-transparent transition-all shrink-0 text-slate-600 dark:text-slate-300" disabled><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+                <span class="text-[11px] font-semibold w-10 lg:w-12 text-center text-slate-600 dark:text-slate-300 shrink-0"><span id="page-num">0</span> / <span id="page-count">0</span></span>
+                <button id="btn-next" class="p-1 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-40 disabled:hover:bg-transparent transition-all shrink-0 text-slate-600 dark:text-slate-300" disabled><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+
+            <button id="btn-export" class="bg-indigo-600 dark:bg-cyan-600 hover:bg-indigo-700 dark:hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-w-0" disabled onclick="openExportModal()">
+                <i data-lucide="save" class="w-3.5 h-3.5 shrink-0"></i>
+                <span class="hidden md:block truncate max-w-[90px]" data-i18n="btn-save">Enregistrer</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Zone principale -->
+    <main class="canvas-wrapper relative workspace-bg" id="canvas-wrapper">
+        <div id="pdf-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm z-20 transition-all">
+            <button onclick="document.getElementById('file-upload').click()" class="bg-indigo-600 dark:bg-cyan-600 hover:bg-indigo-700 dark:hover:bg-cyan-500 text-white px-6 md:px-8 py-3 rounded-2xl text-base font-semibold flex items-center gap-3 transition-all shadow-xl hover:shadow-indigo-500/30 dark:hover:shadow-cyan-500/30 hover:-translate-y-1 cursor-pointer max-w-[90vw] md:max-w-md">
+                <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i>
+                <span class="truncate" data-i18n="main-open-btn">Ouvrir PDF / Projet (.gedit)</span>
+            </button>
+            <input type="file" id="file-upload" class="hidden" accept=".pdf,.gedit">
+            <input type="file" id="image-upload" class="hidden" accept="image/*">
+            
+            <div class="relative mt-4 max-w-[90vw]">
+                <button id="dropdown-btn" class="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-200/50 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors cursor-pointer w-full max-w-[220px] mx-auto border border-transparent dark:border-slate-700">
+                    <span class="truncate" data-i18n="main-other-options">Autres options</span>
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 shrink-0"></i>
+                </button>
+                <div id="dropdown-menu" class="hidden absolute top-full mt-2 w-[90vw] max-w-[220px] bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden z-30 flex flex-col left-1/2 -translate-x-1/2">
+                    <button class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full min-w-0" onclick="createBlankPDF()">
+                        <i data-lucide="file-plus" class="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400 shrink-0"></i>
+                        <span class="truncate" data-i18n="main-create-blank">Créer un PDF vierge</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full min-w-0" onclick="alert(i18n[currentLang]['alert-merge'])">
+                        <i data-lucide="layers" class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0"></i>
+                        <span class="truncate" data-i18n="main-merge">Fusionner des PDF</span>
+                    </button>
+                    <button class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-left text-[13px] text-slate-700 dark:text-slate-200 transition-colors w-full min-w-0" onclick="alert(i18n[currentLang]['alert-compress'])">
+                        <i data-lucide="minimize" class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0"></i>
+                        <span class="truncate" data-i18n="main-compress">Compresser un PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-5 font-medium text-center px-4" data-i18n="main-desc">Sélectionnez un fichier PDF ou reprenez un projet (.gedit) sauvegardé</p>
+        </div>
+        
+        <div id="page-container" class="hidden">
+            <canvas id="editor-canvas"></canvas>
+            <div id="text-layer" class="textLayer"></div>
+        </div>
+
+        <!-- Menu Contextuel Texte -->
+        <div id="text-context-menu" class="hidden fixed bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-slate-200 dark:border-slate-700 z-[100] p-3 flex flex-col gap-2.5 min-w-[200px]" style="top: 0; left: 0;">
+            <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 px-1" data-i18n="ctx-text-style">Style du texte</div>
+            
+            <div class="flex items-center gap-2">
+                <input type="color" id="ctx-color" class="w-7 h-7 rounded cursor-pointer border-0 p-0 shadow-sm shrink-0" data-i18n-title="title-color" title="Couleur">
+                
+                <input type="number" id="ctx-size" class="w-14 h-7 text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white rounded px-1.5 shadow-sm" min="1" data-i18n-title="title-size" title="Taille">
+                <select id="ctx-font" class="flex-1 h-7 text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white rounded px-1 shadow-sm outline-none" data-i18n-title="title-font" title="Police">
+                    <option value="Inter">Inter</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times</option>
+                    <option value="Courier New">Courier</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200/50 dark:border-slate-600/50">
+                <button id="ctx-bold" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 font-bold text-[13px]" data-i18n-title="title-bold" title="Gras">B</button>
+                <button id="ctx-italic" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 italic text-[13px] font-serif" data-i18n-title="title-italic" title="Italique">I</button>
+                <button id="ctx-underline" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 underline text-[13px]" data-i18n-title="title-underline" title="Souligné">U</button>
+                <button id="ctx-strike" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 line-through text-[13px]" data-i18n-title="title-strike" title="Barré">S</button>
+                <div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                <button id="ctx-delete" class="flex-1 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-400 hover:shadow-sm transition-all text-rose-500 flex items-center justify-center" data-i18n-title="title-delete" title="Supprimer">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Menu Contextuel Masques -->
+        <div id="mask-context-menu" class="hidden fixed bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-slate-200 dark:border-slate-700 z-[100] p-3 flex flex-col gap-2.5 min-w-[160px]" style="top: 0; left: 0;">
+            <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 px-1" data-i18n="ctx-shape-style">Style de la forme</div>
+            
+            <div class="flex items-center gap-2">
+                <input type="color" id="ctx-mask-color" class="w-7 h-7 rounded cursor-pointer border-0 p-0 shadow-sm shrink-0" data-i18n-title="title-color" title="Couleur">
+                <span class="text-[13px] text-slate-600 dark:text-slate-300 font-medium ml-1" data-i18n="ctx-color">Couleur</span>
+            </div>
+            
+            <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200/50 dark:border-slate-600/50 mt-1">
+                <button id="ctx-mask-delete" class="flex-1 py-1.5 px-2 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-400 hover:shadow-sm transition-all text-rose-500 flex items-center justify-center gap-2 text-[13px] font-medium" data-i18n-title="title-delete" title="Supprimer">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span data-i18n="ctx-delete">Supprimer</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Contrôle de Zoom -->
+        <div id="zoom-container" class="hidden fixed bottom-5 left-5 z-40 items-center gap-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-xl rounded-xl border border-slate-200/60 dark:border-slate-700 p-1 transition-all">
+            <button id="btn-zoom-out" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-700 dark:text-slate-300" disabled onclick="changeZoom(-0.1)"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i></button>
+            <span id="zoom-val" class="text-[11px] font-semibold w-10 text-center text-slate-700 dark:text-slate-300">100%</span>
+            <button id="btn-zoom-in" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-700 dark:text-slate-300" disabled onclick="changeZoom(0.1)"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i></button>
+            
+            <div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1 shrink-0"></div>
+            
+            <div class="relative">
+                <button id="btn-help" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-cyan-400 transition-all text-slate-700 dark:text-slate-300 flex items-center justify-center relative" data-i18n-title="title-help" title="Aide & Raccourcis">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <path d="M9 9a2 2 0 1 1 4 0c0 1-2 2-2 2"></path>
+                        <line x1="11" y1="14.5" x2="11.01" y2="14.5"></line>
+                    </svg>
+                </button>
+                
+                <div id="help-dropdown-menu" class="hidden absolute bottom-full left-0 mb-2 w-[280px] sm:w-[320px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 flex flex-col max-h-[75vh] overflow-y-auto origin-bottom-left">
+                    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-4 h-4 text-indigo-600 dark:text-cyan-400"></i>
+                        <h3 class="font-bold text-slate-800 dark:text-white text-[13px] uppercase tracking-wide" data-i18n="help-title">Guide & Astuces</h3>
+                    </div>
+                    
+                    <div class="p-4 flex flex-col gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 text-indigo-600 dark:text-cyan-400 font-semibold mb-3">
+                                <i data-lucide="monitor" class="w-4 h-4 shrink-0"></i>
+                                <span class="text-[13px]" data-i18n="help-pc">Sur Ordinateur (PC / Mac)</span>
+                            </div>
+                            <ul class="space-y-2.5 text-[12px] text-slate-600 dark:text-slate-400">
+                                <li class="flex justify-between items-center gap-2">
+                                    <span class="bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold shrink-0">Ctrl + Z</span>
+                                    <span class="text-right" data-i18n="help-undo">Annuler la dernière action</span>
+                                </li>
+                                <li class="flex justify-between items-center gap-2">
+                                    <span class="bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold shrink-0 text-rose-500 dark:text-rose-400">Suppr</span>
+                                    <span class="text-right" data-i18n="help-delete">Supprimer l'élément sélectionné</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="h-px bg-slate-200/80 dark:bg-slate-700"></div>
+                        <div>
+                            <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold mb-3">
+                                <i data-lucide="smartphone" class="w-4 h-4 shrink-0"></i>
+                                <span class="text-[13px]" data-i18n="help-mobile">Sur Téléphone & Tablette</span>
+                            </div>
+                            <ul class="space-y-2.5 text-[12px] text-slate-600 dark:text-slate-400">
+                                <li class="flex justify-between items-start gap-2">
+                                    <span class="bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold shrink-0" data-i18n="help-longpress-btn">Appui Long</span>
+                                    <span class="text-right leading-tight" data-i18n="help-longpress">Effet Double Clic +<br>Ouvre le menu de style</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pop-up Modal d'enregistrement -->
+    <div id="export-modal" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-transform border border-transparent dark:border-slate-700">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 dark:text-white text-lg" data-i18n="export-title">Enregistrer</h3>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="mb-5">
+                    <label for="export-filename" class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="export-filename">Nom du fichier</label>
+                    <div class="relative">
+                        <input type="text" id="export-filename" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-[14px] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-cyan-500/30 focus:border-indigo-500 dark:focus:border-cyan-500 transition-all" value="document_edite" data-i18n-placeholder="default-filename" placeholder="Mon_document">
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <label class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="export-format">Format d'enregistrement</label>
+                    
+                    <button onclick="triggerExport('pdf')" class="w-full flex items-start text-left gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-cyan-500 hover:bg-indigo-50 dark:hover:bg-cyan-900/20 transition-all group">
+                        <div class="bg-rose-100 dark:bg-rose-900/30 p-2.5 rounded-xl group-hover:bg-rose-200 dark:group-hover:bg-rose-900/50 transition-colors shrink-0 shadow-sm flex items-center justify-center">
+                            <i data-lucide="file-text" class="w-5 h-5 text-rose-600 dark:text-rose-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-700 dark:group-hover:text-cyan-400 text-[14px]" data-i18n="export-pdf-title">Document PDF (.pdf)</div>
+                            <div class="text-[12px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5" data-i18n="export-pdf-desc">Version finale aplatie. Idéal pour le partage et l'impression.</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 dark:group-hover:text-cyan-400 self-center"></i>
+                    </button>
+
+                    <button onclick="triggerExport('gedit')" class="w-full flex items-start text-left gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group">
+                        <div class="bg-emerald-100 dark:bg-emerald-900/30 p-2.5 rounded-xl group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/50 transition-colors shrink-0 shadow-sm flex items-center justify-center">
+                            <i data-lucide="save" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 text-[14px]" data-i18n="export-gedit-title">Projet G'Edit (.gedit)</div>
+                            <div class="text-[12px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5" data-i18n="export-gedit-desc">Sauvegarde modifiable. Permet de reprendre l'édition là où vous l'avez laissée.</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 self-center"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pop-up Paramètres -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-100 transition-transform border border-transparent dark:border-slate-700">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 dark:text-white text-lg" data-i18n="settings-title">Paramètres</h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <label class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-3" data-i18n="settings-theme">Thème de l'application</label>
+                <div class="space-y-3">
+                    <button id="btn-theme-light" onclick="setTheme('light')" class="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-left">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-slate-600 flex items-center justify-center shrink-0">
+                            <i data-lucide="sun" class="w-4 h-4 text-indigo-600 dark:text-slate-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-slate-800 dark:text-slate-200 text-[14px]" data-i18n="settings-theme-light">Classique</div>
+                            <div class="text-[12px] text-slate-500 dark:text-slate-400" data-i18n="settings-theme-light-desc">Clair avec finitions violettes</div>
+                        </div>
+                    </button>
+                    <button id="btn-theme-dark" onclick="setTheme('dark')" class="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-left">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-cyan-900/30 flex items-center justify-center shrink-0">
+                            <i data-lucide="moon" class="w-4 h-4 text-slate-400 dark:text-cyan-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-slate-800 dark:text-slate-200 text-[14px]" data-i18n="settings-theme-dark">Sombre</div>
+                            <div class="text-[12px] text-slate-500 dark:text-slate-400" data-i18n="settings-theme-dark-desc">Gris foncé avec finitions cyan</div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-3" data-i18n="settings-lang">Langue / Language</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="btn-lang-fr" onclick="setLanguage('fr')" class="flex items-center justify-center gap-2 p-2.5 rounded-xl border transition-all text-left">
+                            <span class="text-lg">🇫🇷</span>
+                            <span class="font-semibold text-slate-800 dark:text-slate-200 text-[13px]">Français</span>
+                        </button>
+                        <button id="btn-lang-en" onclick="setLanguage('en')" class="flex items-center justify-center gap-2 p-2.5 rounded-xl border transition-all text-left">
+                            <span class="text-lg">🇬🇧</span>
+                            <span class="font-semibold text-slate-800 dark:text-slate-200 text-[13px]">English</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Écran de chargement -->
+    <div id="loader" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all p-4">
+        <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm text-center w-full border border-transparent dark:border-slate-700">
+            <i data-lucide="loader-circle" class="w-10 h-10 text-indigo-600 dark:text-cyan-400 animate-spin mb-4 shrink-0"></i>
+            <div class="text-base font-bold text-slate-800 dark:text-white" id="loader-text" data-i18n="loader-text">Génération du fichier...</div>
+            <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-2" data-i18n="loader-desc">Le fichier est en cours de traitement, veuillez patienter quelques instants.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- DICTIONNAIRE DE TRADUCTION ---
+        const i18n = {
+            fr: {
+                "app-title": "G'Edit - Éditeur PDF interactif",
+                "open-pdf-btn": "Ouvrir un PDF/Projet",
+                "blank-pdf": "PDF vierge",
+                "merge-pdf": "Fusionner",
+                "compress-pdf": "Compresser",
+                "btn-edit": "Edit",
+                "edit-manipulate": "Manipuler",
+                "edit-copy": "Copier texte original",
+                "edit-rewrite": "Réécriture (Remplacer)",
+                "tool-text": "Texte",
+                "tool-image": "Image",
+                "tool-mask": "Masquer",
+                "mask-black": "Noir",
+                "mask-white": "Blanc",
+                "tool-highlight": "Surligner",
+                "tool-delete": "Supprimer",
+                "btn-save": "Enregistrer",
+                "main-open-btn": "Ouvrir PDF / Projet (.gedit)",
+                "main-other-options": "Autres options",
+                "main-create-blank": "Créer un PDF vierge",
+                "main-merge": "Fusionner des PDF",
+                "main-compress": "Compresser un PDF",
+                "main-desc": "Sélectionnez un fichier PDF ou reprenez un projet (.gedit) sauvegardé",
+                "ctx-text-style": "Style du texte",
+                "ctx-shape-style": "Style de la forme",
+                "ctx-color": "Couleur",
+                "ctx-delete": "Supprimer",
+                "help-title": "Guide & Astuces",
+                "help-pc": "Sur Ordinateur (PC / Mac)",
+                "help-undo": "Annuler la dernière action",
+                "help-delete": "Supprimer l'élément sélectionné",
+                "help-mobile": "Sur Téléphone & Tablette",
+                "help-longpress-btn": "Appui Long",
+                "help-longpress": "Effet Double Clic +<br>Ouvre le menu de style",
+                "export-title": "Enregistrer",
+                "export-filename": "Nom du fichier",
+                "export-format": "Format d'enregistrement",
+                "export-pdf-title": "Document PDF (.pdf)",
+                "export-pdf-desc": "Version finale aplatie. Idéal pour le partage et l'impression.",
+                "export-gedit-title": "Projet G'Edit (.gedit)",
+                "export-gedit-desc": "Sauvegarde modifiable. Permet de reprendre l'édition là où vous l'avez laissée.",
+                "settings-title": "Paramètres",
+                "settings-theme": "Thème de l'application",
+                "settings-theme-light": "Classique",
+                "settings-theme-light-desc": "Clair avec finitions violettes",
+                "settings-theme-dark": "Sombre",
+                "settings-theme-dark-desc": "Gris foncé avec finitions cyan",
+                "settings-lang": "Langue / Language",
+                "loader-text": "Génération du fichier...",
+                "loader-desc": "Le fichier est en cours de traitement, veuillez patienter quelques instants.",
+                "alert-merge": "Fonctionnalité de fusion à venir !",
+                "alert-compress": "Fonctionnalité de compression à venir !",
+                "alert-corrupt": "Le fichier de projet est corrompu ou invalide.",
+                "alert-error-load": "Erreur lors du chargement du PDF: ",
+                "alert-invalid-file": "Veuillez sélectionner un fichier PDF ou un projet .gedit.",
+                "alert-blank-confirm": "Êtes-vous sûr de vouloir créer un nouveau document vierge ? Les modifications non exportées seront perdues.",
+                "alert-open-confirm": "Êtes-vous sûr de vouloir ouvrir un autre document ? Les modifications non exportées seront perdues.",
+                "loader-save-proj": "Sauvegarde du projet...",
+                "loader-save-pdf": "Génération du PDF...",
+                "alert-error-save": "Erreur lors de la sauvegarde du projet.",
+                "alert-error-pdf": "Une erreur est survenue lors de la création du PDF.",
+                "default-filename": "Mon_document",
+                "title-settings": "Paramètres",
+                "title-color": "Couleur",
+                "title-size": "Taille",
+                "title-font": "Police",
+                "title-bold": "Gras",
+                "title-italic": "Italique",
+                "title-underline": "Souligné",
+                "title-strike": "Barré",
+                "title-delete": "Supprimer",
+                "title-undo": "Annuler (Ctrl+Z)",
+                "title-redo": "Rétablir (Ctrl+Y)",
+                "title-help": "Aide & Raccourcis",
+                "canvas-click-edit": "Cliquez pour éditer"
+            },
+            en: {
+                "app-title": "G'Edit - Interactive PDF Editor",
+                "open-pdf-btn": "Open PDF/Project",
+                "blank-pdf": "Blank PDF",
+                "merge-pdf": "Merge",
+                "compress-pdf": "Compress",
+                "btn-edit": "Edit",
+                "edit-manipulate": "Manipulate",
+                "edit-copy": "Copy original text",
+                "edit-rewrite": "Rewrite (Replace)",
+                "tool-text": "Text",
+                "tool-image": "Image",
+                "tool-mask": "Mask",
+                "mask-black": "Black",
+                "mask-white": "White",
+                "tool-highlight": "Highlight",
+                "tool-delete": "Delete",
+                "btn-save": "Save",
+                "main-open-btn": "Open PDF / Project (.gedit)",
+                "main-other-options": "Other options",
+                "main-create-blank": "Create blank PDF",
+                "main-merge": "Merge PDFs",
+                "main-compress": "Compress PDF",
+                "main-desc": "Select a PDF file or resume a saved project (.gedit)",
+                "ctx-text-style": "Text style",
+                "ctx-shape-style": "Shape style",
+                "ctx-color": "Color",
+                "ctx-delete": "Delete",
+                "help-title": "Guide & Tips",
+                "help-pc": "On Computer (PC / Mac)",
+                "help-undo": "Undo last action",
+                "help-delete": "Delete selected item",
+                "help-mobile": "On Phone & Tablet",
+                "help-longpress-btn": "Long Press",
+                "help-longpress": "Double Click effect +<br>Opens style menu",
+                "export-title": "Save",
+                "export-filename": "File name",
+                "export-format": "Save format",
+                "export-pdf-title": "PDF Document (.pdf)",
+                "export-pdf-desc": "Flattened final version. Ideal for sharing and printing.",
+                "export-gedit-title": "G'Edit Project (.gedit)",
+                "export-gedit-desc": "Editable backup. Allows you to resume editing where you left off.",
+                "settings-title": "Settings",
+                "settings-theme": "Application theme",
+                "settings-theme-light": "Classic",
+                "settings-theme-light-desc": "Light with purple finishes",
+                "settings-theme-dark": "Dark",
+                "settings-theme-dark-desc": "Dark gray with cyan finishes",
+                "settings-lang": "Langue / Language",
+                "loader-text": "Generating file...",
+                "loader-desc": "The file is being processed, please wait a few moments.",
+                "alert-merge": "Merge feature coming soon!",
+                "alert-compress": "Compress feature coming soon!",
+                "alert-corrupt": "The project file is corrupted or invalid.",
+                "alert-error-load": "Error loading PDF: ",
+                "alert-invalid-file": "Please select a PDF file or a .gedit project.",
+                "alert-blank-confirm": "Are you sure you want to create a new blank document? Unsaved changes will be lost.",
+                "alert-open-confirm": "Are you sure you want to open another document? Unsaved changes will be lost.",
+                "loader-save-proj": "Saving project...",
+                "loader-save-pdf": "Generating PDF...",
+                "alert-error-save": "Error saving project.",
+                "alert-error-pdf": "An error occurred while creating the PDF.",
+                "default-filename": "My_document",
+                "title-settings": "Settings",
+                "title-color": "Color",
+                "title-size": "Size",
+                "title-font": "Font",
+                "title-bold": "Bold",
+                "title-italic": "Italic",
+                "title-underline": "Underline",
+                "title-strike": "Strikethrough",
+                "title-delete": "Delete",
+                "title-undo": "Undo (Ctrl+Z)",
+                "title-redo": "Redo (Ctrl+Y)",
+                "title-help": "Help & Shortcuts",
+                "canvas-click-edit": "Click to edit"
+            }
+        };
+
+        lucide.createIcons();
+        fabric.Object.NUM_FRACTION_DIGITS = 8;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        let originalPdfBytes = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let pageTextContent = null; 
+        const logicalScale = 1.5; 
+        const renderScale = 4.0; 
+        let currentZoom = 1.0; 
+        let baseWidth = 0;
+        let baseHeight = 0;
+        let canvas;
+        let pageStates = {}; 
+        let pageHistory = {};
+        let isHistoryAction = false; 
+
+        let currentMaskColor = '#000000';
+        let currentTool = 'select'; 
+        let currentEditMode = 'select'; 
+        let isDrawing = false;
+        let origX, origY;
+        let tempShape = null;
+
+        // --- Logique Langue et Paramètres ---
+        let currentLang = localStorage.getItem('gedit-lang') || 'fr';
+
+        function applyLanguage(lang) {
+            const dict = i18n[lang];
+            if (!dict) return;
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                if(dict[el.getAttribute('data-i18n')]) {
+                    el.innerHTML = dict[el.getAttribute('data-i18n')];
+                }
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                if(dict[el.getAttribute('data-i18n-placeholder')]) {
+                    el.placeholder = dict[el.getAttribute('data-i18n-placeholder')];
+                }
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                if(dict[el.getAttribute('data-i18n-title')]) {
+                    el.title = dict[el.getAttribute('data-i18n-title')];
+                }
+            });
+            document.title = dict['app-title'];
+        }
+
+        // Appliquer la langue au démarrage
+        applyLanguage(currentLang);
+
+        function updateSettingsModalUI() {
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            const btnLight = document.getElementById('btn-theme-light');
+            const btnDark = document.getElementById('btn-theme-dark');
+            
+            if (isDark) {
+                btnDark.classList.add('ring-2', 'ring-cyan-500', 'border-cyan-500', 'bg-slate-700');
+                btnDark.classList.remove('border-slate-700');
+                btnLight.classList.remove('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50');
+                btnLight.classList.add('border-slate-700');
+            } else {
+                btnLight.classList.add('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50');
+                btnLight.classList.remove('border-slate-200');
+                btnDark.classList.remove('ring-2', 'ring-cyan-500', 'border-cyan-500', 'bg-slate-800');
+                btnDark.classList.add('border-slate-200');
+            }
+
+            const btnFr = document.getElementById('btn-lang-fr');
+            const btnEn = document.getElementById('btn-lang-en');
+            
+            const baseClasses = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border transition-all text-left';
+            const inactiveClasses = isDark ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50';
+            const activeClasses = isDark ? 'ring-2 ring-cyan-500 border-cyan-500 bg-slate-700' : 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50';
+
+            btnFr.className = `${baseClasses} ${currentLang === 'fr' ? activeClasses : inactiveClasses}`;
+            btnEn.className = `${baseClasses} ${currentLang === 'en' ? activeClasses : inactiveClasses}`;
+        }
+
+        window.openSettingsModal = function() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            updateSettingsModalUI();
+        };
+
+        window.closeSettingsModal = function() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        };
+
+        window.setTheme = function(themeName) {
+            if (themeName === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('gedit-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('gedit-theme', 'light');
+            }
+            updateSettingsModalUI();
+        };
+
+        window.setLanguage = function(lang) {
+            currentLang = lang;
+            localStorage.setItem('gedit-lang', lang);
+            updateSettingsModalUI();
+            applyLanguage(lang);
+        };
+
+        function sampleColor(logicalX, logicalY, wantDarkColor = false) {
+            if (!window.pdfBgCanvas) return wantDarkColor ? '#000000' : '#ffffff';
+            const ratio = renderScale / logicalScale;
+            const px = Math.floor(logicalX * ratio);
+            const py = Math.floor(logicalY * ratio);
+            if (px < 0 || px >= window.pdfBgCanvas.width || py < 0 || py >= window.pdfBgCanvas.height) return wantDarkColor ? '#000000' : '#ffffff';
+            const ctx = window.pdfBgCanvas.getContext('2d', { willReadFrequently: true });
+            try {
+                const data = ctx.getImageData(px, py, 1, 1).data;
+                if (data[3] === 0) return wantDarkColor ? '#000000' : '#ffffff'; 
+                const brightness = (data[0] * 299 + data[1] * 587 + data[2] * 114) / 1000;
+                if (!wantDarkColor && brightness < 120) return '#ffffff';
+                if (wantDarkColor && brightness > 200) return '#000000';
+                const r = data[0].toString(16).padStart(2, '0');
+                const g = data[1].toString(16).padStart(2, '0');
+                const b = data[2].toString(16).padStart(2, '0');
+                return `#${r}${g}${b}`;
+            } catch(e) { return wantDarkColor ? '#000000' : '#ffffff'; }
+        }
+
+        function syncRewriteSpans() {
+            const spans = document.querySelectorAll('#text-layer span');
+            spans.forEach(s => { s.style.pointerEvents = ''; s.style.color = ''; });
+            const masks = canvas.getObjects().filter(o => o.isRewriteMask);
+            if (masks.length === 0) return;
+            const containerRect = document.getElementById('page-container').getBoundingClientRect();
+            spans.forEach(span => {
+                const spanRect = span.getBoundingClientRect();
+                const sL = (spanRect.left - containerRect.left) / currentZoom;
+                const sT = (spanRect.top - containerRect.top) / currentZoom;
+                const cX = sL + (spanRect.width / currentZoom)/2;
+                const cY = sT + (spanRect.height / currentZoom)/2;
+                for (let i = 0; i < masks.length; i++) {
+                    const m = masks[i];
+                    if (cX >= m.left && cX <= m.left + m.width * m.scaleX && cY >= m.top && cY <= m.top + m.height * m.scaleY) {
+                        span.style.pointerEvents = 'none';
+                        span.style.color = 'transparent';
+                        break;
+                    }
+                }
+            });
+        }
+
+        function initHistoryForPage(num) { if (!pageHistory[num]) pageHistory[num] = { past: [], future: [] }; }
+
+        function saveHistory(isInitial = false) {
+            if (isHistoryAction || !canvas) return;
+            initHistoryForPage(pageNum);
+            const state = JSON.stringify(canvas.toJSON(['isRewriteZone', 'isRewriteMask'])); 
+            const past = pageHistory[pageNum].past;
+            if (past.length > 0 && past[past.length - 1] === state) return;
+            past.push(state);
+            if (!isInitial) pageHistory[pageNum].future = [];
+            pageStates[pageNum] = JSON.parse(state); 
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            const hasPast = pageHistory[pageNum] && pageHistory[pageNum].past.length > 1;
+            const hasFuture = pageHistory[pageNum] && pageHistory[pageNum].future.length > 0;
+            document.getElementById('btn-undo').disabled = !hasPast;
+            document.getElementById('btn-redo').disabled = !hasFuture;
+        }
+
+        window.undo = function() {
+            if (!pageHistory[pageNum] || pageHistory[pageNum].past.length <= 1) return;
+            isHistoryAction = true;
+            const past = pageHistory[pageNum].past;
+            const future = pageHistory[pageNum].future;
+            future.push(past.pop());
+            const prevState = past[past.length - 1];
+            pageStates[pageNum] = JSON.parse(prevState);
+            canvas.loadFromJSON(prevState, () => {
+                canvas.renderAll();
+                isHistoryAction = false;
+                updateHistoryButtons();
+                hideContextMenu();
+                hideMaskContextMenu();
+                syncRewriteSpans(); 
+            });
+        };
+
+        window.redo = function() {
+            if (!pageHistory[pageNum] || pageHistory[pageNum].future.length === 0) return;
+            isHistoryAction = true;
+            const past = pageHistory[pageNum].past;
+            const future = pageHistory[pageNum].future;
+            const nextState = future.pop();
+            past.push(nextState);
+            pageStates[pageNum] = JSON.parse(nextState);
+            canvas.loadFromJSON(nextState, () => {
+                canvas.renderAll();
+                isHistoryAction = false;
+                updateHistoryButtons();
+                hideContextMenu();
+                hideMaskContextMenu();
+                syncRewriteSpans(); 
+            });
+        };
+
+        function showContextMenu(e, target) {
+            if (e && e.preventDefault) e.preventDefault();
+            const menu = document.getElementById('text-context-menu');
+            menu.classList.remove('hidden');
+            let left = e.clientX, top = e.clientY;
+            if (left + 220 > window.innerWidth) left = window.innerWidth - 220;
+            if (top + 100 > window.innerHeight) top = window.innerHeight - 100;
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+            document.getElementById('ctx-color').value = target.fill || '#000000';
+            document.getElementById('ctx-size').value = target.fontSize ? Math.round(target.fontSize) : 20;
+            document.getElementById('ctx-font').value = target.fontFamily || 'Inter';
+            
+            const isDark = document.documentElement.classList.contains('dark');
+            const activeBg = isDark ? 'bg-slate-600' : 'bg-slate-200';
+            const activeText = isDark ? 'text-white' : 'text-indigo-700';
+
+            const toggleActive = (id, isActive) => {
+                const btn = document.getElementById(id);
+                if (isActive) { btn.classList.add(activeBg, 'shadow-inner', activeText); }
+                else { btn.classList.remove('bg-slate-200', 'bg-slate-600', 'shadow-inner', 'text-indigo-700', 'text-white'); }
+            };
+            toggleActive('ctx-bold', target.fontWeight === 'bold');
+            toggleActive('ctx-italic', target.fontStyle === 'italic');
+            toggleActive('ctx-underline', target.underline);
+            toggleActive('ctx-strike', target.linethrough);
+        }
+        
+        function hideContextMenu() {
+            const menu = document.getElementById('text-context-menu');
+            if (menu && !menu.classList.contains('hidden')) menu.classList.add('hidden');
+        }
+
+        function showMaskContextMenu(e, target) {
+            if (e && e.preventDefault) e.preventDefault();
+            const menu = document.getElementById('mask-context-menu');
+            menu.classList.remove('hidden');
+            let left = e.clientX, top = e.clientY;
+            if (left + 180 > window.innerWidth) left = window.innerWidth - 180;
+            if (top + 100 > window.innerHeight) top = window.innerHeight - 100;
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+            let color = target.fill;
+            if (color && color.startsWith('rgb')) {
+                const ctx = document.createElement('canvas').getContext('2d');
+                ctx.fillStyle = color;
+                color = ctx.fillStyle; 
+            }
+            document.getElementById('ctx-mask-color').value = color || '#000000';
+        }
+
+        function hideMaskContextMenu() {
+            const menu = document.getElementById('mask-context-menu');
+            if (menu && !menu.classList.contains('hidden')) menu.classList.add('hidden');
+        }
+
+        const updateTextProp = (prop, value) => {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && (activeObj.type === 'i-text' || activeObj.type === 'textbox')) {
+                activeObj.set(prop, value);
+                canvas.requestRenderAll();
+                saveHistory();
+            }
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+                if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+            }
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject) {
+                    if ((activeObject.type === 'i-text' || activeObject.type === 'textbox') && activeObject.isEditing) return;
+                    if (activeObject.isRewriteZone && activeObject.text !== '') {
+                        e.preventDefault();
+                        activeObject.set('text', '');
+                        canvas.requestRenderAll();
+                        activeObject.enterEditing();
+                        saveHistory();
+                        return;
+                    }
+                    canvas.remove(activeObject);
+                    canvas.requestRenderAll();
+                    saveHistory();
+                    syncRewriteSpans(); 
+                    hideContextMenu();
+                    hideMaskContextMenu();
+                }
+            }
+        });
+
+        window.onload = () => {
+            canvas = new fabric.Canvas('editor-canvas', {
+                selection: true,
+                preserveObjectStacking: true,
+                fireRightClick: true, 
+                stopContextMenu: true 
+            });
+
+            document.getElementById('canvas-wrapper').addEventListener('contextmenu', e => {
+                if(e.target.tagName.toLowerCase() !== 'span') e.preventDefault();
+            });
+
+            canvas.on('object:modified', () => saveHistory());
+            canvas.on('object:removed', () => saveHistory());
+            canvas.on('object:added', (e) => {
+                if (isHistoryAction || e.target === tempShape) return;
+                saveHistory();
+            });
+
+            let touchTimer = null, touchStartX = 0, touchStartY = 0;
+
+            canvas.on('mouse:down', function(opt) {
+                const target = opt.target;
+                if (opt.button === 3) { 
+                    if (target && (target.type === 'i-text' || target.type === 'textbox')) {
+                        canvas.setActiveObject(target); showContextMenu(opt.e, target); hideMaskContextMenu();
+                    } else if (target && target.type === 'rect') {
+                        canvas.setActiveObject(target); showMaskContextMenu(opt.e, target); hideContextMenu();
+                    } else { hideContextMenu(); hideMaskContextMenu(); }
+                } else { hideContextMenu(); hideMaskContextMenu(); }
+
+                const evt = opt.e;
+                if (evt.touches || evt.changedTouches || evt.type === 'touchstart') {
+                    const touch = evt.touches ? evt.touches[0] : (evt.changedTouches ? evt.changedTouches[0] : null);
+                    if (touch) {
+                        touchStartX = touch.clientX; touchStartY = touch.clientY;
+                        touchTimer = setTimeout(() => {
+                            if (target) {
+                                canvas.setActiveObject(target);
+                                if (target.type === 'i-text' || target.type === 'textbox') {
+                                    target.enterEditing(); target.selectAll(); showContextMenu({ clientX: touchStartX, clientY: touchStartY }, target); hideMaskContextMenu();
+                                } else if (target.type === 'rect') {
+                                    showMaskContextMenu({ clientX: touchStartX, clientY: touchStartY }, target); hideContextMenu();
+                                }
+                                canvas.requestRenderAll();
+                            }
+                        }, 500);
+                    }
+                }
+
+                if (opt.button !== 3 && currentTool !== 'select' && currentTool !== 'text-select' && currentTool !== 'rewrite' && currentTool !== 'image') {
+                    var pointer = canvas.getPointer(opt.e);
+                    isDrawing = true; origX = pointer.x; origY = pointer.y;
+
+                    if (currentTool === 'text') {
+                        const text = new fabric.IText(i18n[currentLang]['canvas-click-edit'], {
+                            left: origX, top: origY, fontFamily: 'Inter', fill: '#ef4444', fontSize: 20,
+                            transparentCorners: false, cornerColor: '#4f46e5', borderColor: '#4f46e5', editingBorderColor: '#4f46e5'
+                        });
+                        canvas.add(text); setActiveTool(currentEditMode); canvas.setActiveObject(text);
+                        text.enterEditing(); text.selectAll(); isDrawing = false; return;
+                    }
+
+                    let fillOption = '', opacityOption = 1;
+                    if (currentTool === 'mask') fillOption = currentMaskColor;
+                    if (currentTool === 'highlight') { fillOption = '#fbbf24'; opacityOption = 0.4; }
+
+                    tempShape = new fabric.Rect({
+                        left: origX, top: origY, width: 0, height: 0, fill: fillOption, opacity: opacityOption, strokeWidth: 0,
+                        transparentCorners: false, cornerColor: '#4f46e5', borderColor: '#4f46e5', selectable: false, evented: false
+                    });
+                    canvas.add(tempShape);
+                }
+            });
+
+            canvas.on('mouse:move', function(o) {
+                if (touchTimer) {
+                    const evt = o.e;
+                    const touch = evt.touches ? evt.touches[0] : (evt.changedTouches ? evt.changedTouches[0] : null);
+                    if (touch && (Math.abs(touch.clientX - touchStartX) > 10 || Math.abs(touch.clientY - touchStartY) > 10)) {
+                        clearTimeout(touchTimer); touchTimer = null;
+                    }
+                }
+                if (!isDrawing || !tempShape || currentTool === 'text') return;
+                var pointer = canvas.getPointer(o.e);
+                if(origX > pointer.x) { tempShape.set({ left: pointer.x, width: origX - pointer.x }); } else { tempShape.set({ width: pointer.x - origX }); }
+                if(origY > pointer.y) { tempShape.set({ top: pointer.y, height: origY - pointer.y }); } else { tempShape.set({ height: pointer.y - origY }); }
+                canvas.renderAll();
+            });
+
+            canvas.on('mouse:up', function(o) {
+                if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+                if (!isDrawing) return;
+                isDrawing = false;
+                if (tempShape) {
+                    if (tempShape.width < 5 || tempShape.height < 5) tempShape.set({ width: 150, height: 25 });
+                    tempShape.set({ selectable: true, evented: true }); tempShape.setCoords();
+                    canvas.setActiveObject(tempShape); tempShape = null; setActiveTool(currentEditMode); saveHistory(); 
+                }
+            });
+
+            document.getElementById('ctx-color').addEventListener('input', (e) => updateTextProp('fill', e.target.value));
+            document.getElementById('ctx-size').addEventListener('change', (e) => updateTextProp('fontSize', parseInt(e.target.value, 10) || 20));
+            document.getElementById('ctx-font').addEventListener('change', (e) => updateTextProp('fontFamily', e.target.value));
+            
+            const isDarkBtn = () => document.documentElement.classList.contains('dark') ? 'text-white' : 'text-indigo-700';
+            const isDarkBg = () => document.documentElement.classList.contains('dark') ? 'bg-slate-600' : 'bg-slate-200';
+
+            const toggleCtxBtn = (id, prop, toggleVal) => {
+                document.getElementById(id).addEventListener('click', () => {
+                    const obj = canvas.getActiveObject();
+                    if(obj) {
+                        updateTextProp(prop, toggleVal ? (obj[prop] === toggleVal.val1 ? toggleVal.val2 : toggleVal.val1) : !obj[prop]);
+                        const btn = document.getElementById(id);
+                        btn.classList.toggle(isDarkBtn()); btn.classList.toggle(isDarkBg());
+                    }
+                });
+            };
+            toggleCtxBtn('ctx-bold', 'fontWeight', {val1: 'bold', val2: 'normal'});
+            toggleCtxBtn('ctx-italic', 'fontStyle', {val1: 'italic', val2: 'normal'});
+            toggleCtxBtn('ctx-underline', 'underline');
+            toggleCtxBtn('ctx-strike', 'linethrough');
+
+            document.getElementById('ctx-delete').addEventListener('click', () => {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject) {
+                    if (activeObject.isRewriteZone && activeObject.text !== '') { activeObject.set('text', ''); canvas.requestRenderAll(); activeObject.enterEditing(); saveHistory(); } 
+                    else { canvas.remove(activeObject); canvas.requestRenderAll(); saveHistory(); syncRewriteSpans(); }
+                    hideContextMenu(); 
+                }
+            });
+
+            document.getElementById('ctx-mask-color').addEventListener('input', (e) => {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj && activeObj.type === 'rect') { activeObj.set('fill', e.target.value); canvas.requestRenderAll(); saveHistory(); }
+            });
+
+            document.getElementById('ctx-mask-delete').addEventListener('click', () => {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject && activeObject.type === 'rect') { canvas.remove(activeObject); canvas.requestRenderAll(); saveHistory(); syncRewriteSpans(); hideMaskContextMenu(); }
+            });
+
+            canvas.on('mouse:wheel', function(opt) {
+                if (opt.e.ctrlKey) { opt.e.preventDefault(); opt.e.stopPropagation(); let zoomStep = opt.e.deltaY * 0.002; setZoomDirect(currentZoom - zoomStep); }
+            });
+
+            const wrapper = document.getElementById('canvas-wrapper');
+            let initialPinchDistance = null, initialZoom = 1;
+            wrapper.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    if(e.cancelable) e.preventDefault();
+                    initialPinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    initialZoom = currentZoom;
+                }
+            }, {passive: false});
+            wrapper.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2 && initialPinchDistance) {
+                    if(e.cancelable) e.preventDefault();
+                    const currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    setZoomDirect(initialZoom * (currentDistance / initialPinchDistance));
+                }
+            }, {passive: false});
+            wrapper.addEventListener('touchend', function(e) { if (e.touches.length < 2) initialPinchDistance = null; });
+        };
+
+        document.getElementById('text-layer').addEventListener('mousedown', function(e) {
+            if (currentTool === 'rewrite' && e.target.tagName.toLowerCase() === 'span') {
+                const span = e.target;
+                const containerRect = document.getElementById('page-container').getBoundingClientRect();
+                const spanRect = span.getBoundingClientRect();
+                const logicalLeft = (spanRect.left - containerRect.left) / currentZoom;
+                const logicalTop = (spanRect.top - containerRect.top) / currentZoom;
+                const logicalWidth = spanRect.width / currentZoom;
+                const logicalHeight = spanRect.height / currentZoom;
+                const computedStyle = window.getComputedStyle(span);
+                const logicalFontSize = parseFloat(computedStyle.fontSize) / currentZoom;
+                const originalText = span.innerText;
+                
+                let extractedFontFamily = computedStyle.fontFamily; 
+                if (pageTextContent && pageTextContent.styles) {
+                     const fontNameMatches = span.style.fontFamily.match(/g_d\d+_f\d+/);
+                     if (fontNameMatches && pageTextContent.styles[fontNameMatches[0]]) { extractedFontFamily = pageTextContent.styles[fontNameMatches[0]].fontFamily; }
+                }
+                
+                let bgColor = sampleColor(logicalLeft + (logicalWidth/2), logicalTop - 3, false); 
+                let textColor = sampleColor(logicalLeft + 5, logicalTop + (logicalHeight/2), true); 
+                
+                isHistoryAction = true; 
+                const maskRect = new fabric.Rect({
+                    left: logicalLeft - 2, top: logicalTop - 2, width: logicalWidth + 4, height: logicalHeight + 4,
+                    fill: bgColor, strokeWidth: 0, transparentCorners: false, cornerColor: '#4f46e5', borderColor: '#4f46e5',
+                    selectable: true, isRewriteMask: true 
+                });
+                canvas.add(maskRect);
+
+                const rewriteText = new fabric.Textbox(originalText, {
+                    left: logicalLeft, top: logicalTop - 1, width: Math.max(logicalWidth + 20, 100), fontFamily: extractedFontFamily, fill: textColor, fontSize: logicalFontSize,
+                    transparentCorners: false, cornerColor: '#a855f7', borderColor: '#a855f7', editingBorderColor: '#a855f7', isRewriteZone: true 
+                });
+                canvas.add(rewriteText);
+                isHistoryAction = false; saveHistory(); syncRewriteSpans(); 
+                
+                setEditMode('select'); canvas.setActiveObject(rewriteText); rewriteText.enterEditing(); rewriteText.selectAll();
+            }
+        });
+
+        function initApp(pdf, isProject) {
+            pdfDoc = pdf; pageNum = 1; if (!isProject) pageStates = {}; 
+            pageHistory = {}; currentZoom = 1.0; pageTextContent = null;
+            document.getElementById('zoom-val').textContent = '100%';
+            document.getElementById('page-count').textContent = pdfDoc.numPages;
+            document.getElementById('pdf-placeholder').style.display = 'none';
+            document.getElementById('page-container').classList.remove('hidden'); document.getElementById('page-container').classList.add('block');
+            document.getElementById('btn-open-other').classList.remove('hidden'); document.getElementById('btn-open-other').classList.add('flex');
+            document.getElementById('zoom-container').classList.remove('hidden'); document.getElementById('zoom-container').classList.add('flex');
+            enableTools(true); setEditMode('select'); renderPage(pageNum);
+        }
+
+        document.getElementById('file-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            if (file.name.endsWith('.gedit')) {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    try {
+                        const projectData = JSON.parse(this.result);
+                        pageStates = projectData.pageStates || {};
+                        fetch(projectData.pdfData).then(res => res.arrayBuffer()).then(buffer => {
+                                originalPdfBytes = new Uint8Array(buffer); return pdfjsLib.getDocument(originalPdfBytes).promise;
+                        }).then(pdf => initApp(pdf, true));
+                    } catch(error) { alert(i18n[currentLang]['alert-corrupt']); }
+                };
+                reader.readAsText(file);
+            } else if (file.type === 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    originalPdfBytes = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(originalPdfBytes).promise.then(pdf => initApp(pdf, false)).catch(error => alert(i18n[currentLang]['alert-error-load'] + error.message));
+                };
+                reader.readAsArrayBuffer(file);
+            } else { alert(i18n[currentLang]['alert-invalid-file']); }
+            e.target.value = '';
+        });
+
+        function renderPage(num) {
+            pageRendering = true; hideContextMenu(); hideMaskContextMenu();
+            pdfDoc.getPage(num).then(function(page) {
+                const logicalViewport = page.getViewport({scale: logicalScale});
+                const renderViewport = page.getViewport({scale: renderScale});
+                const tempCanvas = document.createElement('canvas'); const ctx = tempCanvas.getContext('2d');
+                tempCanvas.height = renderViewport.height; tempCanvas.width = renderViewport.width;
+                const renderContext = { canvasContext: ctx, viewport: renderViewport };
+                
+                baseWidth = logicalViewport.width; baseHeight = logicalViewport.height;
+                const pageContainer = document.getElementById('page-container');
+                pageContainer.style.width = (baseWidth * currentZoom) + 'px'; pageContainer.style.height = (baseHeight * currentZoom) + 'px';
+
+                page.getTextContent().then(function(textContent) { pageTextContent = textContent; updateTextLayer(); });
+                
+                page.render(renderContext).promise.then(function() {
+                    pageRendering = false; window.pdfBgCanvas = tempCanvas;
+                    isHistoryAction = true; canvas.setWidth(baseWidth * currentZoom); canvas.setHeight(baseHeight * currentZoom); canvas.setZoom(currentZoom);
+                    
+                    fabric.Image.fromURL(tempCanvas.toDataURL('image/jpeg', 1.0), function(img) {
+                        img.set({ scaleX: logicalViewport.width / renderViewport.width, scaleY: logicalViewport.height / renderViewport.height, originX: 'left', originY: 'top' });
+                        canvas.clear();
+                        const postLoadInit = () => {
+                            canvas.setBackgroundImage(img, function() {
+                                canvas.renderAll(); isHistoryAction = false; initHistoryForPage(num);
+                                if(pageHistory[num].past.length === 0) saveHistory(true);
+                                updateHistoryButtons(); syncRewriteSpans(); 
+                                if (pageNumPending !== null) { renderPage(pageNumPending); pageNumPending = null; }
+                            });
+                        };
+                        if (pageStates[num]) { canvas.loadFromJSON(pageStates[num], postLoadInit); } else { postLoadInit(); }
+                    });
+                });
+            });
+            document.getElementById('page-num').textContent = num;
+            document.getElementById('btn-prev').disabled = num <= 1;
+            document.getElementById('btn-next').disabled = num >= pdfDoc.numPages;
+        }
+
+        function updateTextLayer() {
+            if (!pageTextContent || !pdfDoc) return;
+            const textLayerDiv = document.getElementById('text-layer'); textLayerDiv.innerHTML = '';
+            pdfDoc.getPage(pageNum).then(page => {
+                const scaledViewport = page.getViewport({ scale: logicalScale * currentZoom });
+                textLayerDiv.style.setProperty('--scale-factor', scaledViewport.scale);
+                try { pdfjsLib.renderTextLayer({ textContent: pageTextContent, container: textLayerDiv, viewport: scaledViewport, textDivs: [] }).promise.then(() => syncRewriteSpans()); } catch(e) { setTimeout(syncRewriteSpans, 100); }
+            });
+        }
+
+        function queueRenderPage(num) { if (pageRendering) { pageNumPending = num; } else { renderPage(num); } }
+
+        function enableTools(enabled) {
+            const buttons = ['btn-edit', 'btn-edit-dropdown', 'btn-text', 'btn-image', 'btn-mask', 'btn-mask-dropdown', 'btn-highlight', 'btn-delete', 'btn-prev', 'btn-next', 'btn-export', 'btn-zoom-in', 'btn-zoom-out'];
+            buttons.forEach(id => { const el = document.getElementById(id); if(el) el.disabled = !enabled; });
+            updateHistoryButtons();
+        }
+
+        window.toggleMobileMenu = function(forceClose = false) {
+            const menu = document.getElementById('tools-menu');
+            if (forceClose === true) { menu.classList.add('hidden'); menu.classList.remove('flex'); } 
+            else { menu.classList.toggle('hidden'); if (menu.classList.contains('hidden')) menu.classList.remove('flex'); else menu.classList.add('flex'); }
+        };
+
+        window.setActiveTool = function(tool) {
+            currentTool = tool;
+            let activeToolId = tool; if (tool === 'select' || tool === 'text-select' || tool === 'rewrite') activeToolId = 'edit';
+            ['edit', 'text', 'mask', 'highlight'].forEach(t => {
+                const btn = document.getElementById('btn-' + t);
+                if (btn) {
+                    if (t === activeToolId) { btn.classList.add('tool-active'); btn.classList.remove('text-slate-700', 'dark:text-slate-200', 'hover:bg-white', 'dark:hover:bg-slate-700'); } 
+                    else { btn.classList.remove('tool-active'); btn.classList.add('text-slate-700', 'dark:text-slate-200', 'hover:bg-white', 'dark:hover:bg-slate-700'); }
+                }
+            });
+            toggleMobileMenu(true);
+            const textLayer = document.getElementById('text-layer');
+            
+            if (tool === 'text-select') {
+                textLayer.style.pointerEvents = 'auto'; textLayer.classList.remove('rewrite-mode'); canvas.defaultCursor = 'text';
+                canvas.selection = false; canvas.discardActiveObject(); canvas.renderAll(); canvas.forEachObject(function(o) { o.set('selectable', false); o.set('evented', false); });
+            } else if (tool === 'rewrite') {
+                textLayer.style.pointerEvents = 'auto'; textLayer.classList.add('rewrite-mode'); canvas.defaultCursor = 'default';
+                canvas.selection = false; canvas.discardActiveObject(); canvas.renderAll(); canvas.forEachObject(function(o) { o.set('selectable', false); o.set('evented', false); });
+            } else {
+                textLayer.style.pointerEvents = 'none'; textLayer.classList.remove('rewrite-mode'); window.getSelection().removeAllRanges(); 
+                if (tool === 'select') { canvas.defaultCursor = 'default'; canvas.selection = true; canvas.forEachObject(function(o) { o.set('selectable', true); o.set('evented', true); }); } 
+                else { canvas.defaultCursor = 'crosshair'; canvas.selection = false; canvas.discardActiveObject(); canvas.renderAll(); canvas.forEachObject(function(o) { o.set('selectable', false); o.set('evented', false); }); }
+            }
+        };
+
+        window.setEditMode = function(mode) {
+            currentEditMode = mode;
+            const editIcon = document.getElementById('edit-icon');
+            if (mode === 'select') editIcon.setAttribute('data-lucide', 'mouse-pointer-2');
+            else if (mode === 'text-select') editIcon.setAttribute('data-lucide', 'text-cursor');
+            else if (mode === 'rewrite') editIcon.setAttribute('data-lucide', 'wand-2');
+            lucide.createIcons();
+            document.getElementById('edit-dropdown-menu').classList.add('hidden'); setActiveTool(mode);
+        };
+
+        document.getElementById('btn-image').addEventListener('click', () => { document.getElementById('image-upload').click(); toggleMobileMenu(true); });
+
+        document.getElementById('image-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                fabric.Image.fromURL(f.target.result, function(img) {
+                    const logicalWidth = canvas.width / currentZoom; const logicalHeight = canvas.height / currentZoom; const maxWidth = logicalWidth / 2;
+                    if (img.width > maxWidth) img.scaleToWidth(maxWidth);
+                    img.set({ left: logicalWidth / 2 - (img.getScaledWidth() / 2), top: logicalHeight / 2 - (img.getScaledHeight() / 2), transparentCorners: false, cornerColor: '#4f46e5', borderColor: '#4f46e5' });
+                    canvas.add(img); setEditMode('select'); canvas.setActiveObject(img);
+                });
+            };
+            reader.readAsDataURL(file); e.target.value = '';
+        });
+
+        document.getElementById('btn-delete').addEventListener('click', () => {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                if (activeObject.isRewriteZone && activeObject.text !== '') { activeObject.set('text', ''); canvas.requestRenderAll(); activeObject.enterEditing(); saveHistory(); } 
+                else { canvas.remove(activeObject); canvas.requestRenderAll(); saveHistory(); syncRewriteSpans(); }
+            }
+            toggleMobileMenu(true);
+        });
+
+        document.getElementById('btn-prev').addEventListener('click', () => { if (pageNum <= 1) return; pageNum--; queueRenderPage(pageNum); });
+        document.getElementById('btn-next').addEventListener('click', () => { if (pageNum >= pdfDoc.numPages) return; pageNum++; queueRenderPage(pageNum); });
+
+        window.openExportModal = function() {
+            document.getElementById('export-modal').classList.remove('hidden');
+            lucide.createIcons(); setTimeout(() => document.getElementById('export-filename').focus(), 100);
+        };
+        window.closeExportModal = function() { document.getElementById('export-modal').classList.add('hidden'); };
+
+        window.triggerExport = function(type) {
+            let fileName = document.getElementById('export-filename').value.trim();
+            if (!fileName) fileName = "document_edite"; 
+            closeExportModal();
+            if (type === 'pdf') exportPDF(fileName); else if (type === 'gedit') saveProject(fileName);
+        };
+
+        window.saveProject = function(fileName) {
+            if (!pdfDoc || !originalPdfBytes) return;
+            saveHistory(); 
+            document.getElementById('loader-text').textContent = i18n[currentLang]['loader-save-proj'];
+            const loader = document.getElementById('loader'); loader.classList.remove('hidden');
+            setTimeout(() => {
+                try {
+                    const blob = new Blob([originalPdfBytes], {type: 'application/pdf'});
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const finalBlob = new Blob([JSON.stringify({ pdfData: e.target.result, pageStates: pageStates })], {type: "application/json"});
+                        const url = URL.createObjectURL(finalBlob);
+                        const a = document.createElement('a'); a.href = url; a.download = fileName.endsWith('.gedit') ? fileName : fileName + '.gedit'; a.click();
+                        URL.revokeObjectURL(url); loader.classList.add('hidden');
+                    };
+                    reader.readAsDataURL(blob);
+                } catch(error) { alert(i18n[currentLang]['alert-error-save']); loader.classList.add('hidden'); }
+            }, 100);
+        }
+
+        window.exportPDF = async function(fileName) {
+            if (!pdfDoc) return;
+            document.getElementById('loader-text').textContent = i18n[currentLang]['loader-save-pdf'];
+            const loader = document.getElementById('loader'); loader.classList.remove('hidden');
+            try {
+                const { jsPDF } = window.jspdf; let pdf = null;
+                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const logicalViewport = page.getViewport({scale: logicalScale}); const renderViewport = page.getViewport({scale: renderScale});
+                    const tempCanvas = document.createElement('canvas'); const ctx = tempCanvas.getContext('2d');
+                    tempCanvas.width = renderViewport.width; tempCanvas.height = renderViewport.height;
+                    await page.render({canvasContext: ctx, viewport: renderViewport}).promise;
+                    
+                    const tempFab = new fabric.StaticCanvas(null, { width: logicalViewport.width, height: logicalViewport.height });
+                    await new Promise(resolve => {
+                        fabric.Image.fromURL(tempCanvas.toDataURL('image/jpeg', 1.0), function(img) {
+                            img.set({ scaleX: logicalViewport.width / renderViewport.width, scaleY: logicalViewport.height / renderViewport.height });
+                            tempFab.setBackgroundImage(img, resolve);
+                        });
+                    });
+                    if (pageStates[i]) await new Promise(resolve => { tempFab.loadFromJSON(pageStates[i], resolve); });
+                    tempFab.renderAll();
+                    
+                    const imgData = tempFab.toDataURL({ format: 'jpeg', quality: 0.95, multiplier: renderScale / logicalScale });
+                    const orientation = logicalViewport.width > logicalViewport.height ? 'l' : 'p';
+                    if (i === 1) pdf = new jsPDF({ orientation: orientation, unit: 'pt', format: [logicalViewport.width, logicalViewport.height] });
+                    else pdf.addPage([logicalViewport.width, logicalViewport.height], orientation);
+                    pdf.addImage(imgData, 'JPEG', 0, 0, logicalViewport.width, logicalViewport.height);
+                }
+                pdf.save(fileName.endsWith('.pdf') ? fileName : fileName + '.pdf');
+            } catch (error) { console.error(error); alert(i18n[currentLang]['alert-error-pdf']); } finally { loader.classList.add('hidden'); }
+        };
+
+        // --- Logique d'ouverture des menus déroulants ---
+        document.getElementById('dropdown-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('dropdown-menu').classList.toggle('hidden');
+        });
+
+        document.getElementById('btn-help').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('help-dropdown-menu').classList.toggle('hidden');
+        });
+
+        document.getElementById('btn-header-dropdown-toggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('header-dropdown-menu').classList.toggle('hidden');
+        });
+
+        document.getElementById('btn-mask-dropdown').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('mask-dropdown-menu').classList.toggle('hidden');
+        });
+
+        document.getElementById('btn-edit-dropdown').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('edit-dropdown-menu').classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            [ { menu: 'dropdown-menu', btn: 'dropdown-btn' }, { menu: 'header-dropdown-menu', btn: 'btn-header-dropdown-toggle' }, { menu: 'mask-dropdown-menu', btn: 'btn-mask-dropdown' }, { menu: 'edit-dropdown-menu', btn: 'btn-edit-dropdown' }, { menu: 'help-dropdown-menu', btn: 'btn-help' } ].forEach(d => {
+                const menuEl = document.getElementById(d.menu);
+                if (menuEl && !menuEl.classList.contains('hidden') && !e.target.closest('#' + d.btn)) menuEl.classList.add('hidden');
+            });
+            if (!e.target.closest('#text-context-menu')) hideContextMenu();
+            if (!e.target.closest('#mask-context-menu')) hideMaskContextMenu();
+            const exportModal = document.getElementById('export-modal');
+            if (!exportModal.classList.contains('hidden') && e.target === exportModal) closeExportModal();
+            const settingsModal = document.getElementById('settings-modal');
+            if (!settingsModal.classList.contains('hidden') && e.target === settingsModal) closeSettingsModal();
+            const toolsMenu = document.getElementById('tools-menu');
+            if (window.innerWidth < 768 && toolsMenu && !toolsMenu.classList.contains('hidden') && !e.target.closest('#tools-menu') && !e.target.closest('#btn-mobile-menu')) { toolsMenu.classList.add('hidden'); toolsMenu.classList.remove('flex'); }
+        });
+        
+        window.setMaskColor = function(color) {
+            currentMaskColor = color;
+            const maskIcon = document.getElementById('mask-icon');
+            if (color === '#ffffff') { maskIcon.classList.remove('fill-slate-800', 'text-slate-800', 'dark:fill-slate-300', 'dark:text-slate-300'); maskIcon.classList.add('fill-white', 'text-slate-400'); } 
+            else { maskIcon.classList.remove('fill-white', 'text-slate-400'); maskIcon.classList.add('fill-slate-800', 'text-slate-800', 'dark:fill-slate-300', 'dark:text-slate-300'); }
+            document.getElementById('mask-dropdown-menu').classList.add('hidden');
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'rect' && (activeObject.fill === '#000000' || activeObject.fill === '#ffffff')) { activeObject.set('fill', color); canvas.requestRenderAll(); saveHistory(); }
+        };
+
+        window.createBlankPDF = function() {
+            if (pdfDoc && !confirm(i18n[currentLang]['alert-blank-confirm'])) return;
+            const { jsPDF } = window.jspdf; const doc = new jsPDF({ format: 'a4' }); const pdfDataUri = doc.output('datauristring');
+            const base64 = pdfDataUri.substring(pdfDataUri.indexOf(';base64,') + 8);
+            const raw = atob(base64); const rawLength = raw.length; const array = new Uint8Array(new ArrayBuffer(rawLength));
+            for (let i = 0; i < rawLength; i++) array[i] = raw.charCodeAt(i);
+            originalPdfBytes = array; 
+            pdfjsLib.getDocument(array).promise.then(pdf => initApp(pdf, false)).catch(error => alert("Erreur: " + error.message));
+        };
+
+        window.openAnotherPDF = function() {
+            if (confirm(i18n[currentLang]['alert-open-confirm'])) { document.getElementById('file-upload').value = ''; document.getElementById('file-upload').click(); }
+        };
+
+        window.setZoomDirect = function(newZoom) {
+            if (!pdfDoc) return;
+            newZoom = Math.max(0.25, Math.min(2.0, newZoom));
+            if (newZoom !== currentZoom) { currentZoom = newZoom; document.getElementById('zoom-val').textContent = Math.round(currentZoom * 100) + '%'; applyZoom(); }
+        };
+
+        window.changeZoom = function(delta) { setZoomDirect(currentZoom + delta); };
+
+        function applyZoom() {
+            if (!baseWidth || !baseHeight || !canvas) return;
+            const pageContainer = document.getElementById('page-container');
+            pageContainer.style.width = (baseWidth * currentZoom) + 'px'; pageContainer.style.height = (baseHeight * currentZoom) + 'px';
+            canvas.setWidth(baseWidth * currentZoom); canvas.setHeight(baseHeight * currentZoom); canvas.setZoom(currentZoom);
+            updateTextLayer(); hideContextMenu(); hideMaskContextMenu();
+        }
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then((registration) => {
+                    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') registration.update(); });
+                    setInterval(() => registration.update(), 60 * 60 * 1000);
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(newWorker);
+                        });
+                    });
+                }).catch((err) => console.error("Échec d'enregistrement du Service Worker :", err));
+
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+
+        function showUpdateBanner(worker) {
+            if (document.getElementById('pwa-update-banner')) return;
+            const banner = document.createElement('div');
+            banner.id = 'pwa-update-banner';
+            const isDark = document.documentElement.classList.contains('dark');
+            banner.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${isDark ? '#0891b2' : '#4f46e5'};color:#fff;padding:10px 12px 10px 18px;border-radius:10px;font-family:Inter,sans-serif;font-size:13px;z-index:99999;display:flex;align-items:center;gap:14px;box-shadow:0 10px 25px -5px rgb(0 0 0 / 0.35);transition:background 0.2s;`;
+
+            const label = document.createElement('span');
+            label.textContent = 'Nouvelle version de G\'Edit disponible';
+            banner.appendChild(label);
+
+            const btn = document.createElement('button');
+            btn.textContent = 'Mettre à jour';
+            btn.style.cssText = `background:#fff;color:${isDark ? '#0891b2' : '#4f46e5'};border:none;padding:6px 12px;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;`;
+            btn.onclick = () => {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+                banner.remove();
+            };
+            banner.appendChild(btn);
+
+            document.body.appendChild(banner);
+        }
+    </script>
+</body>
+</html>
