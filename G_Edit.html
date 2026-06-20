@@ -6,16 +6,38 @@
     <title id="app-title">G'Edit - Éditeur PDF interactif</title>
     
     <script>
-        // Applique le thème sombre dès le chargement si l'utilisateur l'a choisi précédemment
-        if (localStorage.getItem('gedit-theme') === 'dark') {
+        const savedTheme = localStorage.getItem('gedit-theme');
+        if (savedTheme === 'dark') {
             document.documentElement.classList.add('dark');
+        } else if (savedTheme === 'glass') {
+            document.documentElement.classList.add('dark', 'glass');
+            const savedBg = localStorage.getItem('gedit-glass-bg');
+            if (savedBg) {
+                document.documentElement.style.setProperty('--glass-bg', `url("${savedBg}")`);
+            }
+            const savedAccent = localStorage.getItem('gedit-glass-accent');
+            if (savedAccent) {
+                document.documentElement.style.setProperty('--glass-accent', savedAccent);
+                document.documentElement.style.setProperty('--glass-accent-hover', localStorage.getItem('gedit-glass-accent-hover'));
+                document.documentElement.style.setProperty('--glass-accent-bg', localStorage.getItem('gedit-glass-accent-bg'));
+                document.documentElement.style.setProperty('--glass-panel-bg', localStorage.getItem('gedit-glass-panel-bg'));
+                
+                const savedContrast = localStorage.getItem('gedit-glass-text-contrast');
+                if (savedContrast) {
+                    document.documentElement.style.setProperty('--glass-text-contrast', savedContrast);
+                }
+                const savedAccentText = localStorage.getItem('gedit-glass-accent-text');
+                if (savedAccentText) {
+                    document.documentElement.style.setProperty('--glass-accent-text', savedAccentText);
+                }
+            }
         }
     </script>
 
-    <!-- Favicon (Logo en Cygne Origami) -->
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNGY0NmU1IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTMgMTloMThsLTUtNy01IDQtNi01eiIvPjxwYXRoIGQ9Ik0zIDE5bDgtMyAxMCAzIi8+PHBhdGggZD0iTTExIDE2bDItMTIgNSAyLTMgMiAxIDQiLz48L3N2Zz4=">
 
-    <!-- PWA : manifest, icônes et meta tags -->
+    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -26,10 +48,10 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- PDF.js Text Layer CSS pour la superposition invisible du texte -->
+    <!-- PDF.js Text Layer CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf_viewer.min.css">
     
-    <!-- Tailwind CSS pour le style -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -125,6 +147,110 @@
             color: #22d3ee !important; 
             box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.2);
         }
+
+        /* --- THEME TRANSLUCIDE --- */
+        :root {
+            --glass-accent: #ffffff; 
+            --glass-accent-hover: #e2e8f0;
+            --glass-accent-bg: rgba(255, 255, 255, 0.15);
+            --glass-panel-bg: rgba(10, 10, 10, 0.65);
+            --glass-text-contrast: #ffffff;
+            --glass-accent-text: #0f172a;
+        }
+        html.glass body {
+            background-color: #050505;
+            background-image: var(--glass-bg, url("lac_des_Cygnes-Fond_d'écran_paysage_naturel Fond d'écran__1920x1080[10wallpaper.com].jpg"));
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        html.glass .workspace-bg { background-color: rgba(0, 0, 0, 0.55); background-image: none; }
+        
+        html.glass header, 
+        html.glass #tools-menu, 
+        html.glass .dark\:bg-slate-800,
+        html.glass .dark\:bg-slate-800\/80,
+        html.glass .dark\:bg-slate-800\/90,
+        html.glass .dark\:bg-slate-800\/95,
+        html.glass .dark\:bg-slate-900\/80,
+        html.glass div.dark\:bg-slate-700,
+        html.glass .bg-white\/90 {
+            background-color: var(--glass-panel-bg) !important;
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-color: var(--glass-accent-bg) !important;
+        }
+
+        html.glass input.dark\:bg-slate-900,
+        html.glass select.dark\:bg-slate-900 {
+            background-color: rgba(0, 0, 0, 0.4) !important;
+            color: var(--glass-text-contrast) !important;
+            border-color: var(--glass-accent-bg) !important;
+        }
+
+        html.glass .dark\:hover\:bg-slate-700:hover,
+        html.glass .dark\:hover\:bg-slate-600:hover,
+        html.glass .hover\:bg-slate-50:hover {
+            background-color: var(--glass-accent-bg) !important;
+        }
+        
+        html.glass .bg-slate-600, html.glass button.bg-slate-800 {
+            background-color: var(--glass-accent-bg) !important;
+            color: var(--glass-text-contrast) !important;
+        }
+
+        html.glass .toolbar-btn,
+        html.glass .text-slate-400, html.glass .dark\:text-slate-400,
+        html.glass .text-slate-500, html.glass .dark\:text-slate-500,
+        html.glass .text-slate-600, html.glass .dark\:text-slate-300,
+        html.glass .text-slate-700, html.glass .dark\:text-slate-200,
+        html.glass .text-slate-800, html.glass .text-slate-900,
+        html.glass .dark\:text-white {
+            color: var(--glass-text-contrast) !important;
+        }
+        html.glass .text-slate-400, html.glass .dark\:text-slate-400,
+        html.glass .text-slate-500, html.glass .dark\:text-slate-500 {
+            opacity: 0.75;
+        }
+        
+        html.glass .tool-active {
+            background-color: var(--glass-accent-bg) !important; 
+            color: var(--glass-text-contrast) !important; 
+            font-weight: 700 !important;
+            box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.4) !important;
+        }
+        
+        html.glass .dark\:bg-cyan-600, html.glass .bg-indigo-600 { 
+            background-color: var(--glass-accent) !important; 
+            color: var(--glass-accent-text) !important; 
+        }
+        html.glass .dark\:hover\:bg-cyan-500:hover, html.glass .hover\:bg-indigo-700:hover { 
+            background-color: var(--glass-accent-hover) !important; 
+        }
+        html.glass .dark\:text-cyan-400, html.glass .text-indigo-600, html.glass .dark\:text-cyan-500 { 
+            color: var(--glass-accent) !important; 
+            opacity: 1 !important; 
+        }
+        html.glass .dark\:border-cyan-500, html.glass .border-indigo-600 { border-color: var(--glass-accent) !important; }
+        html.glass .dark\:hover\:text-cyan-400:hover, html.glass .hover\:text-indigo-700:hover { color: var(--glass-accent) !important; }
+        html.glass .ring-cyan-500, html.glass .ring-indigo-500 { --tw-ring-color: var(--glass-accent) !important; }
+        html.glass .dark\:focus\:ring-cyan-500\/30:focus, html.glass .focus\:ring-indigo-500\/20:focus { --tw-ring-color: var(--glass-accent-bg) !important; }
+
+        html.glass .dark\:bg-cyan-900\/20, html.glass .bg-indigo-50 {
+            background-color: var(--glass-accent-bg) !important;
+            border-color: var(--glass-accent-bg) !important;
+        }
+
+        html.glass .border-slate-400 { border-color: var(--glass-accent) !important; }
+        html.glass .ring-slate-400 { --tw-ring-color: var(--glass-accent) !important; }
+        html.glass .glass-btn-bg { 
+            background-color: var(--glass-accent-bg) !important; 
+            border-color: var(--glass-accent-bg) !important; 
+            color: var(--glass-text-contrast) !important; 
+        }
+        html.glass .glass-btn-bg:hover { background-color: var(--glass-accent-bg) !important; filter: brightness(1.2); }
+        
+        html.glass ::-webkit-scrollbar-thumb { background: var(--glass-accent-bg); border-color: transparent; }
+        html.glass ::-webkit-scrollbar-thumb:hover { background: var(--glass-accent); }
     </style>
 </head>
 <body class="flex flex-col h-screen text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
@@ -148,7 +274,7 @@
                 <span class="font-bold text-base tracking-tight text-slate-900 dark:text-white hidden md:block truncate group-hover:text-indigo-600 dark:group-hover:text-cyan-400 transition-colors">G'Edit</span>
             </div>
 
-            <!-- Bouton Ouvrir un autre avec menu déroulant -->
+            <!-- Bouton Ouvrir un autre -->
             <div id="btn-open-other" class="hidden items-center bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors min-w-0 max-w-[200px] md:max-w-none relative">
                 <button class="flex items-center gap-2 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-600 px-2.5 py-1.5 rounded-l-lg text-[13px] font-medium transition-colors cursor-pointer min-w-0 border-r border-slate-300 dark:border-slate-600" onclick="openAnotherPDF()">
                     <i data-lucide="folder-open" class="w-3.5 h-3.5 shrink-0"></i>
@@ -241,8 +367,9 @@
                 <i data-lucide="highlighter" class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-highlight">Surligner</span>
             </button>
             <div class="h-px w-full md:w-px md:h-4 bg-slate-100 md:bg-slate-300 dark:bg-slate-700 md:dark:bg-slate-600 my-1 md:mx-0.5 shrink-0"></div>
-            <button id="btn-delete" class="toolbar-btn flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-400 text-rose-600 dark:text-rose-500 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 w-full md:w-auto justify-start md:justify-center" disabled>
-                <i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-delete">Supprimer</span>
+            
+            <button id="btn-signature" class="toolbar-btn flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-cyan-900/30 hover:text-indigo-700 dark:hover:text-cyan-400 text-indigo-600 dark:text-cyan-500 transition-all text-[13px] disabled:opacity-40 disabled:cursor-not-allowed min-w-0 w-full md:w-auto justify-start md:justify-center" disabled onclick="openSignatureModal()">
+                <i data-lucide="pen-tool" class="w-3.5 h-3.5 shrink-0"></i> <span class="block md:hidden lg:block truncate max-w-[120px] lg:max-w-[70px]" data-i18n="tool-signature">Signature</span>
             </button>
         </div>
 
@@ -292,6 +419,60 @@
             </div>
 
             <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-5 font-medium text-center px-4" data-i18n="main-desc">Sélectionnez un fichier PDF ou reprenez un projet (.gedit) sauvegardé</p>
+
+            <div class="absolute bottom-4 left-4 right-4 md:left-auto md:right-8 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 flex flex-col z-30 transform transition-all hover:-translate-y-1 max-w-sm overflow-hidden">
+                <button onclick="toggleUpdatePanel()" class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left group">
+                    <div class="flex items-center gap-2.5">
+                        <div class="bg-yellow-400 text-white p-1.5 rounded-lg shadow-sm shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                                <path d="M3 19h18l-5-7-5 4-6-5z"/>
+                                <path d="M3 19l8-3 10 3"/>
+                                <path d="M11 16l2-12 5 2-3 2 1 4"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-bold text-slate-800 dark:text-white text-[14px]" data-i18n="update-title">Mises à jour & Infos</h4>
+                    </div>
+                    <i data-lucide="chevron-down" id="update-panel-icon" class="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-all duration-300"></i>
+                </button>
+                
+                <div id="update-panel-content" class="hidden flex-col gap-3 px-4 pb-4">
+                    <ul class="text-[13px] text-slate-600 dark:text-slate-400 leading-snug space-y-2 pl-1">
+                        <li class="flex items-start gap-2">
+                            <span class="text-yellow-500 font-bold mt-0.5">•</span>
+                            <span data-i18n="update-version">Version actuelle : 3</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-yellow-500 font-bold mt-0.5">•</span>
+                            <span data-i18n="update-notice">Les mises à jour ne se font pas automatiquement.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-yellow-500 font-bold mt-0.5">•</span>
+                            <span data-i18n="update-warning">Attention à toujours supprimer l'ancienne version pour éviter les confusions (penser aussi à renommer le fichier).</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-yellow-500 font-bold mt-0.5">•</span>
+                            <a href="https://github.com/Post-Darkine/G-Edit" target="_blank" rel="noopener noreferrer" class="font-bold text-indigo-600 dark:text-cyan-400 hover:text-indigo-700 dark:hover:text-cyan-300 transition-colors inline-flex items-center gap-1 group/link">
+                                <span data-i18n="update-link">Passer par MON lien GitHub</span>
+                                <i data-lucide="external-link" class="w-3 h-3 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform"></i>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <div class="mt-1 pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2.5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="bg-emerald-500 text-white p-1.5 rounded-lg shadow-sm shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                                    <path d="M3 19h18l-5-7-5 4-6-5z"/>
+                                    <path d="M3 19l8-3 10 3"/>
+                                    <path d="M11 16l2-12 5 2-3 2 1 4"/>
+                                </svg>
+                            </div>
+                            <h4 class="font-bold text-slate-800 dark:text-white text-[14px]" data-i18n="update-info-title">Info pratique</h4>
+                        </div>
+                        <p class="text-[13px] text-slate-600 dark:text-slate-400 leading-snug pl-1" data-i18n="update-info-desc">Cliquez sur le logo G'Edit en haut à gauche pour accéder aux paramètres.</p>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div id="page-container" class="hidden">
@@ -299,48 +480,63 @@
             <div id="text-layer" class="textLayer"></div>
         </div>
 
-        <!-- Menu Contextuel Texte -->
-        <div id="text-context-menu" class="hidden fixed bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-slate-200 dark:border-slate-700 z-[100] p-3 flex flex-col gap-2.5 min-w-[200px]" style="top: 0; left: 0;">
-            <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 px-1" data-i18n="ctx-text-style">Style du texte</div>
+        <!-- Menu Contextuel Unifié (Style + Presse-Papiers) -->
+        <div id="main-context-menu" class="hidden fixed bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-slate-200 dark:border-slate-700 z-[100] p-2 flex flex-col min-w-[220px]" style="top: 0; left: 0;">
             
-            <div class="flex items-center gap-2">
-                <input type="color" id="ctx-color" class="w-7 h-7 rounded cursor-pointer border-0 p-0 shadow-sm shrink-0" data-i18n-title="title-color" title="Couleur">
-                
-                <input type="number" id="ctx-size" class="w-14 h-7 text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white rounded px-1.5 shadow-sm" min="1" data-i18n-title="title-size" title="Taille">
-                <select id="ctx-font" class="flex-1 h-7 text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white rounded px-1 shadow-sm outline-none" data-i18n-title="title-font" title="Police">
-                    <option value="Inter">Inter</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="Times New Roman">Times</option>
-                    <option value="Courier New">Courier</option>
-                </select>
+            <!-- Section Style Texte (affiché si text/textbox sélectionné) -->
+            <div id="ctx-section-text" class="hidden flex-col gap-2.5 p-1 mb-1 border-b border-slate-100 dark:border-slate-700 pb-3">
+                <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 px-1" data-i18n="ctx-text-style">Style du texte</div>
+                <div class="flex items-center gap-2">
+                    <input type="color" id="ctx-color" class="w-7 h-7 rounded cursor-pointer border-0 p-0 shadow-sm shrink-0" data-i18n-title="title-color" title="Couleur">
+                    <input type="number" id="ctx-size" class="w-14 h-7 text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white rounded px-1.5 shadow-sm" min="1" data-i18n-title="title-size" title="Taille">
+                    <select id="ctx-font" class="flex-1 h-7 text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white rounded px-1 shadow-sm outline-none" data-i18n-title="title-font" title="Police">
+                        <option value="Inter">Inter</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times New Roman">Times</option>
+                        <option value="Courier New">Courier</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200/50 dark:border-slate-600/50">
+                    <button id="ctx-bold" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 font-bold text-[13px]" data-i18n-title="title-bold" title="Gras">B</button>
+                    <button id="ctx-italic" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 italic text-[13px] font-serif" data-i18n-title="title-italic" title="Italique">I</button>
+                    <button id="ctx-underline" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 underline text-[13px]" data-i18n-title="title-underline" title="Souligné">U</button>
+                    <button id="ctx-strike" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 line-through text-[13px]" data-i18n-title="title-strike" title="Barré">S</button>
+                </div>
             </div>
-            
-            <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200/50 dark:border-slate-600/50">
-                <button id="ctx-bold" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 font-bold text-[13px]" data-i18n-title="title-bold" title="Gras">B</button>
-                <button id="ctx-italic" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 italic text-[13px] font-serif" data-i18n-title="title-italic" title="Italique">I</button>
-                <button id="ctx-underline" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 underline text-[13px]" data-i18n-title="title-underline" title="Souligné">U</button>
-                <button id="ctx-strike" class="flex-1 p-1 rounded hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all text-slate-700 dark:text-slate-200 line-through text-[13px]" data-i18n-title="title-strike" title="Barré">S</button>
-                <div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                <button id="ctx-delete" class="flex-1 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-400 hover:shadow-sm transition-all text-rose-500 flex items-center justify-center" data-i18n-title="title-delete" title="Supprimer">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-            </div>
-        </div>
 
-        <!-- Menu Contextuel Masques -->
-        <div id="mask-context-menu" class="hidden fixed bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-slate-200 dark:border-slate-700 z-[100] p-3 flex flex-col gap-2.5 min-w-[160px]" style="top: 0; left: 0;">
-            <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 px-1" data-i18n="ctx-shape-style">Style de la forme</div>
-            
-            <div class="flex items-center gap-2">
-                <input type="color" id="ctx-mask-color" class="w-7 h-7 rounded cursor-pointer border-0 p-0 shadow-sm shrink-0" data-i18n-title="title-color" title="Couleur">
-                <span class="text-[13px] text-slate-600 dark:text-slate-300 font-medium ml-1" data-i18n="ctx-color">Couleur</span>
+            <!-- Section Style Masque (affiché si rect sélectionné) -->
+            <div id="ctx-section-mask" class="hidden flex-col gap-2.5 p-1 mb-1 border-b border-slate-100 dark:border-slate-700 pb-3">
+                <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 px-1" data-i18n="ctx-shape-style">Style de la forme</div>
+                <div class="flex items-center gap-2">
+                    <input type="color" id="ctx-mask-color" class="w-7 h-7 rounded cursor-pointer border-0 p-0 shadow-sm shrink-0" data-i18n-title="title-color" title="Couleur">
+                    <span class="text-[13px] text-slate-600 dark:text-slate-300 font-medium ml-1" data-i18n="ctx-color">Couleur</span>
+                </div>
             </div>
-            
-            <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200/50 dark:border-slate-600/50 mt-1">
-                <button id="ctx-mask-delete" class="flex-1 py-1.5 px-2 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-400 hover:shadow-sm transition-all text-rose-500 flex items-center justify-center gap-2 text-[13px] font-medium" data-i18n-title="title-delete" title="Supprimer">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                    <span data-i18n="ctx-delete">Supprimer</span>
+
+            <!-- Section Actions Générales -->
+            <div id="ctx-section-actions" class="flex flex-col gap-0.5 p-1">
+                <button id="ctx-action-cut" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-[13px] text-slate-700 dark:text-slate-200 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i data-lucide="scissors" class="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0"></i> <span data-i18n="ctx-cut">Couper</span>
+                    <span class="ml-auto text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-tighter">Ctrl+X</span>
+                </button>
+                <button id="ctx-action-copy" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-[13px] text-slate-700 dark:text-slate-200 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i data-lucide="copy" class="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0"></i> <span data-i18n="ctx-copy">Copier</span>
+                    <span class="ml-auto text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-tighter">Ctrl+C</span>
+                </button>
+                <button id="ctx-action-paste" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-[13px] text-slate-700 dark:text-slate-200 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i data-lucide="clipboard-paste" class="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0"></i> <span data-i18n="ctx-paste">Coller</span>
+                    <span class="ml-auto text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-tighter">Ctrl+V</span>
+                </button>
+                <button id="ctx-action-replace" class="hidden items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-[13px] text-slate-700 dark:text-slate-200 text-left transition-colors">
+                    <i data-lucide="edit-3" class="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0"></i> <span data-i18n="ctx-replace">Remplacer (Éditer)</span>
+                </button>
+                
+                <div id="ctx-action-divider" class="h-px bg-slate-200 dark:bg-slate-700 my-1 hidden"></div>
+                
+                <button id="ctx-action-delete" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-[13px] text-rose-600 dark:text-rose-400 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i data-lucide="trash-2" class="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0"></i> <span data-i18n="ctx-delete">Supprimer</span>
+                    <span class="ml-auto text-[10px] text-rose-400/70 font-mono tracking-tighter">Suppr</span>
                 </button>
             </div>
         </div>
@@ -381,6 +577,10 @@
                                     <span class="text-right" data-i18n="help-undo">Annuler la dernière action</span>
                                 </li>
                                 <li class="flex justify-between items-center gap-2">
+                                    <span class="bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold shrink-0">Ctrl + C/V/X</span>
+                                    <span class="text-right" data-i18n="help-copy">Copier/Coller/Couper l'élément</span>
+                                </li>
+                                <li class="flex justify-between items-center gap-2">
                                     <span class="bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold shrink-0 text-rose-500 dark:text-rose-400">Suppr</span>
                                     <span class="text-right" data-i18n="help-delete">Supprimer l'élément sélectionné</span>
                                 </li>
@@ -395,7 +595,7 @@
                             <ul class="space-y-2.5 text-[12px] text-slate-600 dark:text-slate-400">
                                 <li class="flex justify-between items-start gap-2">
                                     <span class="bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold shrink-0" data-i18n="help-longpress-btn">Appui Long</span>
-                                    <span class="text-right leading-tight" data-i18n="help-longpress">Effet Double Clic +<br>Ouvre le menu de style</span>
+                                    <span class="text-right leading-tight" data-i18n="help-longpress">Effet Double Clic +<br>Ouvre le menu de style/actions</span>
                                 </li>
                             </ul>
                         </div>
@@ -451,6 +651,66 @@
         </div>
     </div>
 
+    <!-- Pop-up Modal Signature -->
+    <div id="signature-modal" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-transparent dark:border-slate-700">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 dark:text-white text-lg" data-i18n="sig-modal-title">Créer une signature</h3>
+                <button onclick="closeSignatureModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div class="bg-indigo-50 dark:bg-cyan-900/20 border border-indigo-200 dark:border-cyan-800 rounded-xl p-3 flex items-start gap-3 text-indigo-700 dark:text-cyan-300 text-[12px] leading-relaxed">
+                    <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span data-i18n="sig-uppercase-notice">La signature stylisée utilisera l'initiale de votre prénom et votre nom.</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="sig-firstname" class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="sig-firstname-label">Prénom</label>
+                        <input type="text" id="sig-firstname" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-[14px] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-cyan-500/30 focus:border-indigo-500 dark:focus:border-cyan-500 transition-all" placeholder="Jean" oninput="updateSignaturePreview()">
+                    </div>
+                    <div>
+                        <label for="sig-lastname" class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="sig-lastname-label">Nom</label>
+                        <input type="text" id="sig-lastname" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-[14px] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-cyan-500/30 focus:border-indigo-500 dark:focus:border-cyan-500 transition-all" placeholder="DUPONT" oninput="this.value = this.value.toUpperCase(); updateSignaturePreview()">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="sig-format" class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="sig-format-label">Format de signature</label>
+                        <select id="sig-format" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-[13px] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-cyan-500/30 focus:border-indigo-500 dark:focus:border-cyan-500 transition-all outline-none cursor-pointer" onchange="updateSignaturePreview()">
+                            <option value="1" data-i18n="sig-fmt-1">Classique (Double colonne)</option>
+                            <option value="2" data-i18n="sig-fmt-2">Manuscrit (Nom seul)</option>
+                            <option value="3" data-i18n="sig-fmt-3">Professionnel (Nom + Date)</option>
+                            <option value="4" data-i18n="sig-fmt-4">Initiales</option>
+                            <option value="5" data-i18n="sig-fmt-5">Tampon (Encadré)</option>
+                            <option value="6" data-i18n="sig-fmt-6">Minimaliste</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="sig-color" class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="sig-color-label">Couleur de la signature</label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" id="sig-color" class="w-full h-9 rounded-lg cursor-pointer border-0 p-0 shadow-sm shrink-0" value="#1e3a8a" oninput="updateSignaturePreview()">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5" data-i18n="sig-preview">Prévisualisation</label>
+                    <div id="sig-preview-container" class="w-full h-32 bg-white border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex items-center justify-center p-2 relative overflow-hidden">
+                        <!-- Contenu dynamique de la prévisualisation -->
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="closeSignatureModal()" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all" data-i18n="sig-cancel">Annuler</button>
+                    <button onclick="addSignatureToCanvas()" class="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 dark:bg-cyan-600 hover:bg-indigo-700 dark:hover:bg-cyan-500 text-white font-medium transition-all shadow-sm" data-i18n="sig-add">Ajouter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Pop-up Paramètres -->
     <div id="settings-modal" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-100 transition-transform border border-transparent dark:border-slate-700">
@@ -481,6 +741,31 @@
                             <div class="text-[12px] text-slate-500 dark:text-slate-400" data-i18n="settings-theme-dark-desc">Gris foncé avec finitions cyan</div>
                         </div>
                     </button>
+                    <button id="btn-theme-glass" onclick="setTheme('glass')" class="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-left">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0 border border-slate-400">
+                            <i data-lucide="droplet" class="w-4 h-4 text-slate-100"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-slate-800 dark:text-slate-200 text-[14px]" data-i18n="settings-theme-glass">Personnaliser</div>
+                            <div class="text-[12px] text-slate-500 dark:text-slate-400" data-i18n="settings-theme-glass-desc">Fond modifiable, couleur adaptative</div>
+                        </div>
+                    </button>
+                    
+                    <div id="glass-bg-settings" class="hidden mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <button onclick="document.getElementById('glass-bg-upload').click()" class="w-full flex items-center justify-center gap-2 px-3 py-2 text-[12px] font-medium text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-300 dark:border-slate-600 glass-btn-bg">
+                            <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                            <span data-i18n="settings-change-bg">Changer l'image de fond</span>
+                        </button>
+                        <input type="file" id="glass-bg-upload" class="hidden" accept="image/*">
+                        
+                        <div class="mt-4">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-[12px] font-semibold text-slate-700 dark:text-slate-300" data-i18n="settings-glass-opacity">Opacité du verre</label>
+                                <span id="glass-opacity-val" class="text-[11px] font-mono text-slate-500">65%</span>
+                            </div>
+                            <input type="range" id="glass-opacity-slider" min="10" max="95" value="65" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mt-6">
@@ -528,7 +813,25 @@
                 "mask-black": "Noir",
                 "mask-white": "Blanc",
                 "tool-highlight": "Surligner",
-                "tool-delete": "Supprimer",
+                "tool-signature": "Signature",
+                "sig-modal-title": "Créer une signature",
+                "sig-firstname-label": "Prénom",
+                "sig-lastname-label": "Nom",
+                "sig-format-label": "Format de signature",
+                "sig-color-label": "Couleur de la signature",
+                "sig-color-desc": "Choisissez la couleur de l'encre",
+                "sig-uppercase-notice": "La signature stylisée utilisera l'initiale de votre prénom et votre nom.",
+                "sig-preview": "Prévisualisation",
+                "sig-cancel": "Annuler",
+                "sig-add": "Ajouter",
+                "sig-prefix": "Signature numérique de",
+                "sig-fmt-1": "Classique (Double colonne)",
+                "sig-fmt-2": "Manuscrit (Nom seul)",
+                "sig-fmt-3": "Professionnel (Nom + Date)",
+                "sig-fmt-4": "Initiales",
+                "sig-fmt-5": "Tampon (Encadré)",
+                "sig-fmt-6": "Minimaliste",
+                "sig-stamp-title": "SIGNÉ NUMÉRIQUEMENT",
                 "btn-save": "Enregistrer",
                 "main-open-btn": "Ouvrir PDF / Projet (.gedit)",
                 "main-other-options": "Autres options",
@@ -536,17 +839,29 @@
                 "main-merge": "Fusionner des PDF",
                 "main-compress": "Compresser un PDF",
                 "main-desc": "Sélectionnez un fichier PDF ou reprenez un projet (.gedit) sauvegardé",
+                "update-title": "Mises à jour & Infos",
+                "update-version": "Version actuelle : 3",
+                "update-notice": "Les mises à jour ne se font pas automatiquement.",
+                "update-warning": "Attention à toujours supprimer l'ancienne version pour éviter les confusions (penser aussi à renommer le fichier).",
+                "update-link": "Passer par MON lien GitHub",
+                "update-info-title": "Info pratique",
+                "update-info-desc": "Cliquez sur le logo G'Edit en haut à gauche pour accéder aux paramètres.",
                 "ctx-text-style": "Style du texte",
                 "ctx-shape-style": "Style de la forme",
                 "ctx-color": "Couleur",
+                "ctx-cut": "Couper",
+                "ctx-copy": "Copier",
+                "ctx-paste": "Coller",
+                "ctx-replace": "Remplacer (Éditer)",
                 "ctx-delete": "Supprimer",
                 "help-title": "Guide & Astuces",
                 "help-pc": "Sur Ordinateur (PC / Mac)",
                 "help-undo": "Annuler la dernière action",
+                "help-copy": "Copier/Coller/Couper l'élément",
                 "help-delete": "Supprimer l'élément sélectionné",
                 "help-mobile": "Sur Téléphone & Tablette",
                 "help-longpress-btn": "Appui Long",
-                "help-longpress": "Effet Double Clic +<br>Ouvre le menu de style",
+                "help-longpress": "Effet Double Clic +<br>Ouvre le menu de style/actions",
                 "export-title": "Enregistrer",
                 "export-filename": "Nom du fichier",
                 "export-format": "Format d'enregistrement",
@@ -560,6 +875,9 @@
                 "settings-theme-light-desc": "Clair avec finitions violettes",
                 "settings-theme-dark": "Sombre",
                 "settings-theme-dark-desc": "Gris foncé avec finitions cyan",
+                "settings-theme-glass": "Personnaliser",
+                "settings-theme-glass-desc": "Fond d'écran modifiable, couleurs adaptatives",
+                "settings-change-bg": "Changer l'image de fond",
                 "settings-lang": "Langue / Language",
                 "loader-text": "Génération du fichier...",
                 "loader-desc": "Le fichier est en cours de traitement, veuillez patienter quelques instants.",
@@ -583,7 +901,6 @@
                 "title-italic": "Italique",
                 "title-underline": "Souligné",
                 "title-strike": "Barré",
-                "title-delete": "Supprimer",
                 "title-undo": "Annuler (Ctrl+Z)",
                 "title-redo": "Rétablir (Ctrl+Y)",
                 "title-help": "Aide & Raccourcis",
@@ -605,7 +922,25 @@
                 "mask-black": "Black",
                 "mask-white": "White",
                 "tool-highlight": "Highlight",
-                "tool-delete": "Delete",
+                "tool-signature": "Signature",
+                "sig-modal-title": "Create a signature",
+                "sig-firstname-label": "First name",
+                "sig-lastname-label": "Last name",
+                "sig-format-label": "Signature format",
+                "sig-color-label": "Signature color",
+                "sig-color-desc": "Choose ink color",
+                "sig-uppercase-notice": "The stylized signature will use your first name initial and your last name.",
+                "sig-preview": "Preview",
+                "sig-cancel": "Cancel",
+                "sig-add": "Add",
+                "sig-prefix": "Digital signature of",
+                "sig-fmt-1": "Classic (Two columns)",
+                "sig-fmt-2": "Handwritten",
+                "sig-fmt-3": "Professional (Name + Date)",
+                "sig-fmt-4": "Initials",
+                "sig-fmt-5": "Stamp",
+                "sig-fmt-6": "Minimalist",
+                "sig-stamp-title": "DIGITALLY SIGNED",
                 "btn-save": "Save",
                 "main-open-btn": "Open PDF / Project (.gedit)",
                 "main-other-options": "Other options",
@@ -613,17 +948,29 @@
                 "main-merge": "Merge PDFs",
                 "main-compress": "Compress PDF",
                 "main-desc": "Select a PDF file or resume a saved project (.gedit)",
+                "update-title": "Updates & Info",
+                "update-version": "Current version: 3",
+                "update-notice": "Updates are not automatic.",
+                "update-warning": "Be sure to always delete the old version to avoid confusion (also remember to rename the file).",
+                "update-link": "Go through MY GitHub link",
+                "update-info-title": "Practical info",
+                "update-info-desc": "Click the G'Edit logo at the top left to access settings.",
                 "ctx-text-style": "Text style",
                 "ctx-shape-style": "Shape style",
                 "ctx-color": "Color",
+                "ctx-cut": "Cut",
+                "ctx-copy": "Copy",
+                "ctx-paste": "Paste",
+                "ctx-replace": "Replace (Edit)",
                 "ctx-delete": "Delete",
                 "help-title": "Guide & Tips",
                 "help-pc": "On Computer (PC / Mac)",
                 "help-undo": "Undo last action",
+                "help-copy": "Copy/Paste/Cut item",
                 "help-delete": "Delete selected item",
                 "help-mobile": "On Phone & Tablet",
                 "help-longpress-btn": "Long Press",
-                "help-longpress": "Double Click effect +<br>Opens style menu",
+                "help-longpress": "Double Click effect +<br>Opens style/action menu",
                 "export-title": "Save",
                 "export-filename": "File name",
                 "export-format": "Save format",
@@ -637,6 +984,9 @@
                 "settings-theme-light-desc": "Light with purple finishes",
                 "settings-theme-dark": "Dark",
                 "settings-theme-dark-desc": "Dark gray with cyan finishes",
+                "settings-theme-glass": "Custom",
+                "settings-theme-glass-desc": "Custom wallpaper, adaptive colors",
+                "settings-change-bg": "Change background image",
                 "settings-lang": "Langue / Language",
                 "loader-text": "Generating file...",
                 "loader-desc": "The file is being processed, please wait a few moments.",
@@ -660,7 +1010,6 @@
                 "title-italic": "Italic",
                 "title-underline": "Underline",
                 "title-strike": "Strikethrough",
-                "title-delete": "Delete",
                 "title-undo": "Undo (Ctrl+Z)",
                 "title-redo": "Redo (Ctrl+Y)",
                 "title-help": "Help & Shortcuts",
@@ -694,6 +1043,11 @@
         let isDrawing = false;
         let origX, origY;
         let tempShape = null;
+        
+        // PRESSE-PAPIERS GLOBALE
+        let _clipboard = null;
+        let lastRightClickX = null;
+        let lastRightClickY = null;
 
         // --- Logique Langue et Paramètres ---
         let currentLang = localStorage.getItem('gedit-lang') || 'fr';
@@ -720,25 +1074,35 @@
             document.title = dict['app-title'];
         }
 
-        // Appliquer la langue au démarrage
         applyLanguage(currentLang);
 
         function updateSettingsModalUI() {
+            const theme = localStorage.getItem('gedit-theme') || 'light';
             const isDark = document.documentElement.classList.contains('dark');
             
             const btnLight = document.getElementById('btn-theme-light');
             const btnDark = document.getElementById('btn-theme-dark');
+            const btnGlass = document.getElementById('btn-theme-glass');
+            const bgSettings = document.getElementById('glass-bg-settings');
             
-            if (isDark) {
+            [btnLight, btnDark, btnGlass].forEach(btn => {
+                if (theme === 'dark' || theme === 'glass') btn.classList.add('border-slate-700');
+                else { btn.classList.add('border-slate-200'); btn.classList.remove('border-slate-700'); }
+                btn.classList.remove('ring-2', 'ring-indigo-500', 'ring-cyan-500', 'ring-slate-400', 'border-indigo-500', 'border-cyan-500', 'border-slate-400', 'bg-indigo-50', 'bg-slate-700', 'bg-slate-800');
+            });
+
+            if (theme === 'dark') {
                 btnDark.classList.add('ring-2', 'ring-cyan-500', 'border-cyan-500', 'bg-slate-700');
                 btnDark.classList.remove('border-slate-700');
-                btnLight.classList.remove('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50');
-                btnLight.classList.add('border-slate-700');
+                if(bgSettings) bgSettings.classList.add('hidden');
+            } else if (theme === 'glass') {
+                btnGlass.classList.add('ring-2', 'ring-slate-400', 'border-slate-400', 'bg-slate-800');
+                btnGlass.classList.remove('border-slate-700');
+                if(bgSettings) bgSettings.classList.remove('hidden');
             } else {
                 btnLight.classList.add('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50');
                 btnLight.classList.remove('border-slate-200');
-                btnDark.classList.remove('ring-2', 'ring-cyan-500', 'border-cyan-500', 'bg-slate-800');
-                btnDark.classList.add('border-slate-200');
+                if(bgSettings) bgSettings.classList.add('hidden');
             }
 
             const btnFr = document.getElementById('btn-lang-fr');
@@ -746,7 +1110,9 @@
             
             const baseClasses = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border transition-all text-left';
             const inactiveClasses = isDark ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50';
-            const activeClasses = isDark ? 'ring-2 ring-cyan-500 border-cyan-500 bg-slate-700' : 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50';
+            const activeClasses = (theme === 'glass') 
+                ? 'ring-2 ring-slate-400 border-slate-400 bg-slate-800' 
+                : (isDark ? 'ring-2 ring-cyan-500 border-cyan-500 bg-slate-700' : 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50');
 
             btnFr.className = `${baseClasses} ${currentLang === 'fr' ? activeClasses : inactiveClasses}`;
             btnEn.className = `${baseClasses} ${currentLang === 'en' ? activeClasses : inactiveClasses}`;
@@ -761,16 +1127,161 @@
             document.getElementById('settings-modal').classList.add('hidden');
         };
 
+        let currentGlassLuminance = 110; 
+
+        function applyDynamicColors(imageSrc, opacityValue = null) {
+            if (!imageSrc) return;
+            let src = imageSrc;
+            if (src.startsWith('url(')) src = src.slice(4, -1).replace(/"/g, '').replace(/'/g, '');
+            
+            const savedOpacity = opacityValue !== null ? opacityValue : (localStorage.getItem('gedit-glass-opacity') || 65);
+            const panelAlpha = parseInt(savedOpacity) / 100;
+            
+            const slider = document.getElementById('glass-opacity-slider');
+            const valDisplay = document.getElementById('glass-opacity-val');
+            if(slider && valDisplay) {
+                slider.value = savedOpacity;
+                valDisplay.textContent = savedOpacity + '%';
+            }
+
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = function() {
+                const cvs = document.createElement('canvas');
+                const ctx = cvs.getContext('2d');
+                cvs.width = 64; cvs.height = 64;
+                ctx.drawImage(img, 0, 0, 64, 64);
+                
+                try {
+                    const data = ctx.getImageData(0, 0, 64, 64).data;
+                    let colorBins = {};
+                    let maxBin = null; let maxCount = 0;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        let pr = data[i], pg = data[i+1], pb = data[i+2], pa = data[i+3];
+                        if (pa < 255) continue;
+                        let brightness = (pr * 299 + pg * 587 + pb * 114) / 1000;
+                        if (brightness < 30 || brightness > 230) continue; 
+
+                        let binR = Math.round(pr / 24) * 24;
+                        let binG = Math.round(pg / 24) * 24;
+                        let binB = Math.round(pb / 24) * 24;
+                        let bin = `${binR},${binG},${binB}`;
+
+                        if (!colorBins[bin]) colorBins[bin] = {r:0, g:0, b:0, c:0};
+                        colorBins[bin].r += pr; colorBins[bin].g += pg; colorBins[bin].b += pb;
+                        colorBins[bin].c++;
+
+                        if (colorBins[bin].c > maxCount) { maxCount = colorBins[bin].c; maxBin = bin; }
+                    }
+
+                    let r = 255, g = 255, b = 255; 
+                    if (maxBin) {
+                        r = Math.round(colorBins[maxBin].r / colorBins[maxBin].c);
+                        g = Math.round(colorBins[maxBin].g / colorBins[maxBin].c);
+                        b = Math.round(colorBins[maxBin].b / colorBins[maxBin].c);
+                    }
+
+                    currentGlassLuminance = (r * 0.299 + g * 0.587 + b * 0.114);
+                    if (currentGlassLuminance < 110) { 
+                        let factor = 130 / Math.max(currentGlassLuminance, 1);
+                        r = Math.min(255, Math.round(r * factor)); g = Math.min(255, Math.round(g * factor)); b = Math.min(255, Math.round(b * factor));
+                    }
+
+                    const isBgDark = currentGlassLuminance < 130;
+                    const textContrast = isBgDark ? '#ffffff' : '#0f172a';
+                    document.documentElement.style.setProperty('--glass-text-contrast', textContrast);
+                    localStorage.setItem('gedit-glass-text-contrast', textContrast);
+
+                    const accentText = r * 0.299 + g * 0.587 + b * 0.114 > 140 ? '#0f172a' : '#ffffff';
+                    document.documentElement.style.setProperty('--glass-accent-text', accentText);
+                    localStorage.setItem('gedit-glass-accent-text', accentText);
+
+                    const accent = `rgb(${r}, ${g}, ${b})`;
+                    const accentHover = `rgb(${Math.max(0, r-30)}, ${Math.max(0, g-30)}, ${Math.max(0, b-30)})`;
+                    const accentBg = `rgba(${r}, ${g}, ${b}, 0.2)`;
+                    
+                    const rTint = isBgDark ? Math.round(r/15) : 255 - Math.round((255-r)/15);
+                    const gTint = isBgDark ? Math.round(g/15) : 255 - Math.round((255-g)/15);
+                    const bTint = isBgDark ? Math.round(b/15) : 255 - Math.round((255-b)/15);
+                    
+                    const panelTint = `rgba(${rTint}, ${gTint}, ${bTint}, ${panelAlpha})`;
+
+                    document.documentElement.style.setProperty('--glass-accent', accent);
+                    document.documentElement.style.setProperty('--glass-accent-hover', accentHover);
+                    document.documentElement.style.setProperty('--glass-accent-bg', accentBg);
+                    document.documentElement.style.setProperty('--glass-panel-bg', panelTint);
+                    
+                    localStorage.setItem('gedit-glass-accent', accent);
+                    localStorage.setItem('gedit-glass-accent-hover', accentHover);
+                    localStorage.setItem('gedit-glass-accent-bg', accentBg);
+                    localStorage.setItem('gedit-glass-panel-bg', panelTint);
+                } catch (e) { console.warn("Extraction de couleur ignorée (CORS ou sécurité locale).", e); }
+            };
+            img.src = src;
+        }
+
+        const opacitySlider = document.getElementById('glass-opacity-slider');
+        if(opacitySlider) {
+            opacitySlider.addEventListener('input', function(e) {
+                const val = e.target.value;
+                document.getElementById('glass-opacity-val').textContent = val + '%';
+                const currentBg = localStorage.getItem('gedit-glass-bg') || "lac_des_Cygnes-Fond_d'écran_paysage_naturel Fond d'écran__1920x1080[10wallpaper.com].jpg";
+                applyDynamicColors(currentBg, val);
+                localStorage.setItem('gedit-glass-opacity', val);
+            });
+        }
+
         window.setTheme = function(themeName) {
             if (themeName === 'dark') {
                 document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('glass');
                 localStorage.setItem('gedit-theme', 'dark');
+            } else if (themeName === 'glass') {
+                document.documentElement.classList.add('dark', 'glass');
+                const currentBg = localStorage.getItem('gedit-glass-bg') || "lac_des_Cygnes-Fond_d'écran_paysage_naturel Fond d'écran__1920x1080[10wallpaper.com].jpg";
+                applyDynamicColors(currentBg);
+                localStorage.setItem('gedit-theme', 'glass');
             } else {
-                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.remove('dark', 'glass');
                 localStorage.setItem('gedit-theme', 'light');
             }
             updateSettingsModalUI();
         };
+
+        const bgUpload = document.getElementById('glass-bg-upload');
+        if(bgUpload) {
+            bgUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        let w = img.width; let h = img.height;
+                        
+                        const maxW = 1920; const maxH = 1080;
+                        if (w > maxW || h > maxH) {
+                            const ratio = Math.min(maxW / w, maxH / h);
+                            w *= ratio; h *= ratio;
+                        }
+                        canvas.width = w; canvas.height = h;
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+                        
+                        document.documentElement.style.setProperty('--glass-bg', `url(${dataUrl})`);
+                        applyDynamicColors(dataUrl);
+                        try { localStorage.setItem('gedit-glass-bg', dataUrl); } 
+                        catch(err) { console.warn("L'image est trop volumineuse pour être mémorisée à la prochaine visite."); }
+                    }
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            });
+        }
 
         window.setLanguage = function(lang) {
             currentLang = lang;
@@ -855,8 +1366,7 @@
                 canvas.renderAll();
                 isHistoryAction = false;
                 updateHistoryButtons();
-                hideContextMenu();
-                hideMaskContextMenu();
+                hideMainContextMenu();
                 syncRewriteSpans(); 
             });
         };
@@ -873,65 +1383,178 @@
                 canvas.renderAll();
                 isHistoryAction = false;
                 updateHistoryButtons();
-                hideContextMenu();
-                hideMaskContextMenu();
+                hideMainContextMenu();
                 syncRewriteSpans(); 
             });
         };
 
-        function showContextMenu(e, target) {
-            if (e && e.preventDefault) e.preventDefault();
-            const menu = document.getElementById('text-context-menu');
-            menu.classList.remove('hidden');
-            let left = e.clientX, top = e.clientY;
-            if (left + 220 > window.innerWidth) left = window.innerWidth - 220;
-            if (top + 100 > window.innerHeight) top = window.innerHeight - 100;
-            menu.style.left = `${left}px`;
-            menu.style.top = `${top}px`;
-            document.getElementById('ctx-color').value = target.fill || '#000000';
-            document.getElementById('ctx-size').value = target.fontSize ? Math.round(target.fontSize) : 20;
-            document.getElementById('ctx-font').value = target.fontFamily || 'Inter';
-            
-            const isDark = document.documentElement.classList.contains('dark');
-            const activeBg = isDark ? 'bg-slate-600' : 'bg-slate-200';
-            const activeText = isDark ? 'text-white' : 'text-indigo-700';
-
-            const toggleActive = (id, isActive) => {
-                const btn = document.getElementById(id);
-                if (isActive) { btn.classList.add(activeBg, 'shadow-inner', activeText); }
-                else { btn.classList.remove('bg-slate-200', 'bg-slate-600', 'shadow-inner', 'text-indigo-700', 'text-white'); }
-            };
-            toggleActive('ctx-bold', target.fontWeight === 'bold');
-            toggleActive('ctx-italic', target.fontStyle === 'italic');
-            toggleActive('ctx-underline', target.underline);
-            toggleActive('ctx-strike', target.linethrough);
-        }
-        
-        function hideContextMenu() {
-            const menu = document.getElementById('text-context-menu');
-            if (menu && !menu.classList.contains('hidden')) menu.classList.add('hidden');
-        }
-
-        function showMaskContextMenu(e, target) {
-            if (e && e.preventDefault) e.preventDefault();
-            const menu = document.getElementById('mask-context-menu');
-            menu.classList.remove('hidden');
-            let left = e.clientX, top = e.clientY;
-            if (left + 180 > window.innerWidth) left = window.innerWidth - 180;
-            if (top + 100 > window.innerHeight) top = window.innerHeight - 100;
-            menu.style.left = `${left}px`;
-            menu.style.top = `${top}px`;
-            let color = target.fill;
-            if (color && color.startsWith('rgb')) {
-                const ctx = document.createElement('canvas').getContext('2d');
-                ctx.fillStyle = color;
-                color = ctx.fillStyle; 
+        // --- Logique Presse-papiers et Actions ---
+        function CopyAction() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.clone(function(cloned) {
+                    _clipboard = cloned;
+                });
             }
-            document.getElementById('ctx-mask-color').value = color || '#000000';
         }
 
-        function hideMaskContextMenu() {
-            const menu = document.getElementById('mask-context-menu');
+        function CutAction() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.clone(function(cloned) {
+                    _clipboard = cloned;
+                    DeleteAction();
+                });
+            }
+        }
+
+        function PasteAction(x, y) {
+            if (!_clipboard) return;
+            _clipboard.clone(function(clonedObj) {
+                canvas.discardActiveObject();
+                const offset = 20;
+                
+                clonedObj.set({
+                    left: x !== undefined ? x : clonedObj.left + offset,
+                    top: y !== undefined ? y : clonedObj.top + offset,
+                    evented: true,
+                    selectable: true
+                });
+
+                if (clonedObj.type === 'activeSelection') {
+                    clonedObj.canvas = canvas;
+                    clonedObj.forEachObject(function(obj) {
+                        canvas.add(obj);
+                    });
+                    clonedObj.setCoords();
+                } else {
+                    canvas.add(clonedObj);
+                }
+
+                _clipboard.top += offset;
+                _clipboard.left += offset;
+
+                canvas.setActiveObject(clonedObj);
+                canvas.requestRenderAll();
+                saveHistory();
+            });
+        }
+
+        function DeleteAction() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length) {
+                activeObjects.forEach(function(object) {
+                    if (object.isRewriteZone && object.text !== '') {
+                         object.set('text', '');
+                         canvas.requestRenderAll();
+                         object.enterEditing();
+                         saveHistory();
+                    } else {
+                         canvas.remove(object);
+                    }
+                });
+                canvas.discardActiveObject();
+                canvas.requestRenderAll();
+                saveHistory();
+                syncRewriteSpans();
+            }
+        }
+
+        function ReplaceAction() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && (activeObject.type === 'i-text' || activeObject.type === 'textbox')) {
+                activeObject.enterEditing();
+                activeObject.selectAll();
+                canvas.requestRenderAll();
+            }
+        }
+
+        // --- Menu Contextuel Unifié ---
+        function showMainContextMenu(e, target) {
+            if (e && e.preventDefault) e.preventDefault();
+            const menu = document.getElementById('main-context-menu');
+            menu.classList.remove('hidden');
+
+            let left = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+            let top = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+            
+            if (left + 240 > window.innerWidth) left = window.innerWidth - 240;
+            if (top + 350 > window.innerHeight) top = window.innerHeight - 350;
+            
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+
+            document.getElementById('ctx-section-text').classList.add('hidden');
+            document.getElementById('ctx-section-mask').classList.add('hidden');
+            document.getElementById('ctx-action-divider').classList.add('hidden');
+            
+            const btnCut = document.getElementById('ctx-action-cut');
+            const btnCopy = document.getElementById('ctx-action-copy');
+            const btnPaste = document.getElementById('ctx-action-paste');
+            const btnDelete = document.getElementById('ctx-action-delete');
+            const btnReplace = document.getElementById('ctx-action-replace');
+
+            if (target) {
+                btnCut.disabled = false;
+                btnCopy.disabled = false;
+                btnDelete.disabled = false;
+                document.getElementById('ctx-action-divider').classList.remove('hidden');
+
+                if (target.type === 'i-text' || target.type === 'textbox') {
+                    document.getElementById('ctx-section-text').classList.remove('hidden');
+                    document.getElementById('ctx-section-text').classList.add('flex');
+                    
+                    document.getElementById('ctx-color').value = target.fill || '#000000';
+                    document.getElementById('ctx-size').value = target.fontSize ? Math.round(target.fontSize) : 20;
+                    document.getElementById('ctx-font').value = target.fontFamily || 'Inter';
+                    
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const activeBg = isDark ? 'bg-slate-600' : 'bg-slate-200';
+                    const activeText = isDark ? 'text-white' : 'text-indigo-700';
+
+                    const toggleActive = (id, isActive) => {
+                        const btn = document.getElementById(id);
+                        if (isActive) { btn.classList.add(activeBg, 'shadow-inner', activeText); }
+                        else { btn.classList.remove('bg-slate-200', 'bg-slate-600', 'shadow-inner', 'text-indigo-700', 'text-white'); }
+                    };
+                    toggleActive('ctx-bold', target.fontWeight === 'bold');
+                    toggleActive('ctx-italic', target.fontStyle === 'italic');
+                    toggleActive('ctx-underline', target.underline);
+                    toggleActive('ctx-strike', target.linethrough);
+
+                    btnReplace.classList.remove('hidden');
+                    btnReplace.classList.add('flex');
+                } else if (target.type === 'rect') {
+                    document.getElementById('ctx-section-mask').classList.remove('hidden');
+                    document.getElementById('ctx-section-mask').classList.add('flex');
+                    
+                    let color = target.fill;
+                    if (color && color.startsWith('rgb')) {
+                        const ctx = document.createElement('canvas').getContext('2d');
+                        ctx.fillStyle = color;
+                        color = ctx.fillStyle; 
+                    }
+                    document.getElementById('ctx-mask-color').value = color || '#000000';
+                    
+                    btnReplace.classList.add('hidden');
+                    btnReplace.classList.remove('flex');
+                } else {
+                    btnReplace.classList.add('hidden');
+                    btnReplace.classList.remove('flex');
+                }
+            } else {
+                btnCut.disabled = true;
+                btnCopy.disabled = true;
+                btnDelete.disabled = true;
+                btnReplace.classList.add('hidden');
+                btnReplace.classList.remove('flex');
+            }
+
+            btnPaste.disabled = _clipboard === null;
+        }
+
+        function hideMainContextMenu() {
+            const menu = document.getElementById('main-context-menu');
             if (menu && !menu.classList.contains('hidden')) menu.classList.add('hidden');
         }
 
@@ -945,29 +1568,24 @@
         };
 
         window.addEventListener('keydown', (e) => {
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                return; // Laisse le comportement par défaut (ex: backspace) dans les champs de texte
+            }
+            
+            const activeObject = canvas.getActiveObject();
+            const isEditing = activeObject && (activeObject.type === 'i-text' || activeObject.type === 'textbox') && activeObject.isEditing;
+
+            if (isEditing) return;
+
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
                 if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
-            }
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                const activeObject = canvas.getActiveObject();
-                if (activeObject) {
-                    if ((activeObject.type === 'i-text' || activeObject.type === 'textbox') && activeObject.isEditing) return;
-                    if (activeObject.isRewriteZone && activeObject.text !== '') {
-                        e.preventDefault();
-                        activeObject.set('text', '');
-                        canvas.requestRenderAll();
-                        activeObject.enterEditing();
-                        saveHistory();
-                        return;
-                    }
-                    canvas.remove(activeObject);
-                    canvas.requestRenderAll();
-                    saveHistory();
-                    syncRewriteSpans(); 
-                    hideContextMenu();
-                    hideMaskContextMenu();
-                }
+                if (e.key === 'c' || e.key === 'C') { e.preventDefault(); CopyAction(); }
+                if (e.key === 'x' || e.key === 'X') { e.preventDefault(); CutAction(); }
+                if (e.key === 'v' || e.key === 'V') { e.preventDefault(); PasteAction(); }
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                DeleteAction();
             }
         });
 
@@ -994,29 +1612,36 @@
 
             canvas.on('mouse:down', function(opt) {
                 const target = opt.target;
-                if (opt.button === 3) { 
-                    if (target && (target.type === 'i-text' || target.type === 'textbox')) {
-                        canvas.setActiveObject(target); showContextMenu(opt.e, target); hideMaskContextMenu();
-                    } else if (target && target.type === 'rect') {
-                        canvas.setActiveObject(target); showMaskContextMenu(opt.e, target); hideContextMenu();
-                    } else { hideContextMenu(); hideMaskContextMenu(); }
-                } else { hideContextMenu(); hideMaskContextMenu(); }
-
                 const evt = opt.e;
+                
+                if (opt.button === 3) { 
+                    const pointer = canvas.getPointer(evt);
+                    lastRightClickX = pointer.x;
+                    lastRightClickY = pointer.y;
+
+                    if (target) canvas.setActiveObject(target);
+                    else canvas.discardActiveObject();
+                    
+                    canvas.requestRenderAll();
+                    showMainContextMenu(evt, target);
+                } else { 
+                    hideMainContextMenu(); 
+                }
+
                 if (evt.touches || evt.changedTouches || evt.type === 'touchstart') {
                     const touch = evt.touches ? evt.touches[0] : (evt.changedTouches ? evt.changedTouches[0] : null);
                     if (touch) {
                         touchStartX = touch.clientX; touchStartY = touch.clientY;
                         touchTimer = setTimeout(() => {
-                            if (target) {
-                                canvas.setActiveObject(target);
-                                if (target.type === 'i-text' || target.type === 'textbox') {
-                                    target.enterEditing(); target.selectAll(); showContextMenu({ clientX: touchStartX, clientY: touchStartY }, target); hideMaskContextMenu();
-                                } else if (target.type === 'rect') {
-                                    showMaskContextMenu({ clientX: touchStartX, clientY: touchStartY }, target); hideContextMenu();
-                                }
-                                canvas.requestRenderAll();
-                            }
+                            const pointer = canvas.getPointer({ clientX: touchStartX, clientY: touchStartY });
+                            lastRightClickX = pointer.x;
+                            lastRightClickY = pointer.y;
+                            
+                            if (target) canvas.setActiveObject(target);
+                            else canvas.discardActiveObject();
+                            
+                            showMainContextMenu({ clientX: touchStartX, clientY: touchStartY }, target);
+                            canvas.requestRenderAll();
                         }, 500);
                     }
                 }
@@ -1027,7 +1652,7 @@
 
                     if (currentTool === 'text') {
                         const text = new fabric.IText(i18n[currentLang]['canvas-click-edit'], {
-                            left: origX, top: origY, fontFamily: 'Inter', fill: '#ef4444', fontSize: 20,
+                            left: origX, top: origY, fontFamily: 'Inter', fill: '#000000', fontSize: 20,
                             transparentCorners: false, cornerColor: '#4f46e5', borderColor: '#4f46e5', editingBorderColor: '#4f46e5'
                         });
                         canvas.add(text); setActiveTool(currentEditMode); canvas.setActiveObject(text);
@@ -1072,6 +1697,13 @@
                 }
             });
 
+            // Action Contextuelles 
+            document.getElementById('ctx-action-copy').addEventListener('click', () => { CopyAction(); hideMainContextMenu(); });
+            document.getElementById('ctx-action-cut').addEventListener('click', () => { CutAction(); hideMainContextMenu(); });
+            document.getElementById('ctx-action-paste').addEventListener('click', () => { PasteAction(lastRightClickX, lastRightClickY); hideMainContextMenu(); });
+            document.getElementById('ctx-action-replace').addEventListener('click', () => { ReplaceAction(); hideMainContextMenu(); });
+            document.getElementById('ctx-action-delete').addEventListener('click', () => { DeleteAction(); hideMainContextMenu(); });
+
             document.getElementById('ctx-color').addEventListener('input', (e) => updateTextProp('fill', e.target.value));
             document.getElementById('ctx-size').addEventListener('change', (e) => updateTextProp('fontSize', parseInt(e.target.value, 10) || 20));
             document.getElementById('ctx-font').addEventListener('change', (e) => updateTextProp('fontFamily', e.target.value));
@@ -1094,23 +1726,9 @@
             toggleCtxBtn('ctx-underline', 'underline');
             toggleCtxBtn('ctx-strike', 'linethrough');
 
-            document.getElementById('ctx-delete').addEventListener('click', () => {
-                const activeObject = canvas.getActiveObject();
-                if (activeObject) {
-                    if (activeObject.isRewriteZone && activeObject.text !== '') { activeObject.set('text', ''); canvas.requestRenderAll(); activeObject.enterEditing(); saveHistory(); } 
-                    else { canvas.remove(activeObject); canvas.requestRenderAll(); saveHistory(); syncRewriteSpans(); }
-                    hideContextMenu(); 
-                }
-            });
-
             document.getElementById('ctx-mask-color').addEventListener('input', (e) => {
                 const activeObj = canvas.getActiveObject();
                 if (activeObj && activeObj.type === 'rect') { activeObj.set('fill', e.target.value); canvas.requestRenderAll(); saveHistory(); }
-            });
-
-            document.getElementById('ctx-mask-delete').addEventListener('click', () => {
-                const activeObject = canvas.getActiveObject();
-                if (activeObject && activeObject.type === 'rect') { canvas.remove(activeObject); canvas.requestRenderAll(); saveHistory(); syncRewriteSpans(); hideMaskContextMenu(); }
             });
 
             canvas.on('mouse:wheel', function(opt) {
@@ -1215,7 +1833,7 @@
         });
 
         function renderPage(num) {
-            pageRendering = true; hideContextMenu(); hideMaskContextMenu();
+            pageRendering = true; hideMainContextMenu();
             pdfDoc.getPage(num).then(function(page) {
                 const logicalViewport = page.getViewport({scale: logicalScale});
                 const renderViewport = page.getViewport({scale: renderScale});
@@ -1266,7 +1884,7 @@
         function queueRenderPage(num) { if (pageRendering) { pageNumPending = num; } else { renderPage(num); } }
 
         function enableTools(enabled) {
-            const buttons = ['btn-edit', 'btn-edit-dropdown', 'btn-text', 'btn-image', 'btn-mask', 'btn-mask-dropdown', 'btn-highlight', 'btn-delete', 'btn-prev', 'btn-next', 'btn-export', 'btn-zoom-in', 'btn-zoom-out'];
+            const buttons = ['btn-edit', 'btn-edit-dropdown', 'btn-text', 'btn-image', 'btn-mask', 'btn-mask-dropdown', 'btn-highlight', 'btn-signature', 'btn-prev', 'btn-next', 'btn-export', 'btn-zoom-in', 'btn-zoom-out'];
             buttons.forEach(id => { const el = document.getElementById(id); if(el) el.disabled = !enabled; });
             updateHistoryButtons();
         }
@@ -1327,15 +1945,6 @@
                 });
             };
             reader.readAsDataURL(file); e.target.value = '';
-        });
-
-        document.getElementById('btn-delete').addEventListener('click', () => {
-            const activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                if (activeObject.isRewriteZone && activeObject.text !== '') { activeObject.set('text', ''); canvas.requestRenderAll(); activeObject.enterEditing(); saveHistory(); } 
-                else { canvas.remove(activeObject); canvas.requestRenderAll(); saveHistory(); syncRewriteSpans(); }
-            }
-            toggleMobileMenu(true);
         });
 
         document.getElementById('btn-prev').addEventListener('click', () => { if (pageNum <= 1) return; pageNum--; queueRenderPage(pageNum); });
@@ -1438,12 +2047,13 @@
                 const menuEl = document.getElementById(d.menu);
                 if (menuEl && !menuEl.classList.contains('hidden') && !e.target.closest('#' + d.btn)) menuEl.classList.add('hidden');
             });
-            if (!e.target.closest('#text-context-menu')) hideContextMenu();
-            if (!e.target.closest('#mask-context-menu')) hideMaskContextMenu();
+            if (!e.target.closest('#main-context-menu')) hideMainContextMenu();
             const exportModal = document.getElementById('export-modal');
             if (!exportModal.classList.contains('hidden') && e.target === exportModal) closeExportModal();
             const settingsModal = document.getElementById('settings-modal');
             if (!settingsModal.classList.contains('hidden') && e.target === settingsModal) closeSettingsModal();
+            const sigModal = document.getElementById('signature-modal');
+            if (!sigModal.classList.contains('hidden') && e.target === sigModal) closeSignatureModal();
             const toolsMenu = document.getElementById('tools-menu');
             if (window.innerWidth < 768 && toolsMenu && !toolsMenu.classList.contains('hidden') && !e.target.closest('#tools-menu') && !e.target.closest('#btn-mobile-menu')) { toolsMenu.classList.add('hidden'); toolsMenu.classList.remove('flex'); }
         });
@@ -1472,6 +2082,214 @@
             if (confirm(i18n[currentLang]['alert-open-confirm'])) { document.getElementById('file-upload').value = ''; document.getElementById('file-upload').click(); }
         };
 
+        // --- LOGIQUE OUTIL SIGNATURE ---
+        window.openSignatureModal = function() {
+            document.getElementById('signature-modal').classList.remove('hidden');
+            document.getElementById('sig-firstname').value = '';
+            document.getElementById('sig-lastname').value = '';
+            document.getElementById('sig-color').value = '#1e3a8a';
+            document.getElementById('sig-format').value = '1';
+            
+            updateSignaturePreview();
+            setTimeout(() => document.getElementById('sig-firstname').focus(), 100);
+            toggleMobileMenu(true);
+        };
+
+        window.closeSignatureModal = function() {
+            document.getElementById('signature-modal').classList.add('hidden');
+        };
+
+        window.updateSignaturePreview = function() {
+            let firstname = document.getElementById('sig-firstname').value.trim();
+            if (firstname.length > 0) firstname = firstname.charAt(0).toUpperCase() + firstname.slice(1);
+            
+            const lastname = document.getElementById('sig-lastname').value.toUpperCase().trim();
+            const color = document.getElementById('sig-color').value;
+            const format = document.getElementById('sig-format').value;
+            
+            const fullName = (firstname + ' ' + lastname).trim() || (currentLang === 'fr' ? 'Anonyme' : 'Anonymous');
+
+            let sigName = 'ANONYME';
+            let initialLeft = '';
+            let initialsOnly = 'AN';
+            
+            if (firstname || lastname) {
+                const initF = firstname.length > 0 ? firstname.charAt(0).toUpperCase() + '.' : '';
+                sigName = (initF + lastname).trim();
+                
+                const f = firstname.length > 0 ? firstname.charAt(0).toUpperCase() : '';
+                const l = lastname.length > 0 ? lastname.charAt(0).toUpperCase() : '';
+                initialsOnly = (f + l) || 'A';
+            }
+
+            const d = new Date();
+            const dateStr = d.toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US');
+            const timeStr = d.toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute:'2-digit', second:'2-digit', timeZoneName: 'short' });
+            const prefix = i18n[currentLang]['sig-prefix'];
+            const stampTitle = i18n[currentLang]['sig-stamp-title'];
+
+            const container = document.getElementById('sig-preview-container');
+            let html = '';
+
+            if (format === '1') {
+                // Classique (Double colonne)
+                html = `
+                    <div class="flex items-center w-full max-w-[340px]" style="color: ${color};">
+                        <div class="w-[150px] font-serif italic text-2xl text-center shrink-0" style="word-break: break-word;">${sigName}</div>
+                        <div class="w-[2px] h-[100px] mx-3 shrink-0" style="background-color: ${color};"></div>
+                        <div class="flex-1 text-[11.5px] leading-snug">
+                            <div class="font-semibold whitespace-nowrap">${prefix}</div>
+                            <div class="font-bold my-0.5" style="word-break: break-word;">${fullName}</div>
+                            <div>${dateStr} ${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (format === '2') {
+                // Manuscrit
+                html = `
+                    <div style="color: ${color}; font-family: cursive, serif; font-size: 32px; font-style: italic; word-break: break-word; text-align: center;">
+                        ${fullName}
+                    </div>
+                `;
+            } else if (format === '3') {
+                // Professionnel (Nom + Date)
+                html = `
+                    <div class="flex items-center w-full max-w-[340px] px-4" style="color: ${color};">
+                        <div class="flex-1 font-bold text-xl uppercase tracking-wide text-right" style="word-break: break-word;">${fullName}</div>
+                        <div class="w-[2px] h-[50px] mx-4 shrink-0" style="background-color: ${color};"></div>
+                        <div class="flex-1 text-[12px] font-mono font-medium text-left">
+                            <div>${dateStr}</div>
+                            <div>${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (format === '4') {
+                // Initiales
+                html = `
+                    <div class="flex items-center w-full max-w-[340px]" style="color: ${color};">
+                        <div class="w-[100px] font-serif font-bold text-4xl text-center shrink-0 tracking-widest">${initialsOnly}</div>
+                        <div class="w-[2px] h-[60px] mx-3 shrink-0" style="background-color: ${color};"></div>
+                        <div class="flex-1 text-[12px] leading-snug">
+                            <div class="font-bold my-0.5" style="word-break: break-word;">${fullName}</div>
+                            <div>${dateStr}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (format === '5') {
+                // Tampon
+                html = `
+                    <div style="color: ${color}; border: 2px solid ${color}; padding: 12px 20px; border-radius: 8px; text-align: center; line-height: 1.4;">
+                        <div class="font-bold text-[13px] tracking-wider mb-1">${stampTitle}</div>
+                        <div class="font-bold text-[15px] my-1" style="word-break: break-word;">${fullName}</div>
+                        <div class="text-[12px] font-mono">${dateStr} - ${timeStr}</div>
+                    </div>
+                `;
+            } else if (format === '6') {
+                // Minimaliste
+                html = `
+                    <div style="color: ${color}; font-family: sans-serif; font-size: 16px; font-style: italic; word-break: break-word; text-align: center;">
+                        <span class="font-bold">${fullName}</span> - ${dateStr}
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        };
+
+        window.addSignatureToCanvas = function() {
+            let firstname = document.getElementById('sig-firstname').value.trim();
+            if (firstname.length > 0) firstname = firstname.charAt(0).toUpperCase() + firstname.slice(1);
+            
+            const lastname = document.getElementById('sig-lastname').value.toUpperCase().trim();
+            const inkColor = document.getElementById('sig-color').value || '#1e3a8a';
+            const format = document.getElementById('sig-format').value;
+
+            const fullName = (firstname + ' ' + lastname).trim() || (currentLang === 'fr' ? 'Anonyme' : 'Anonymous');
+            
+            let sigName = 'ANONYME';
+            let initialsOnly = 'AN';
+            if (firstname || lastname) {
+                const initial = firstname.length > 0 ? firstname.charAt(0).toUpperCase() + '.' : '';
+                sigName = (initial + lastname).trim();
+                
+                const f = firstname.length > 0 ? firstname.charAt(0).toUpperCase() : '';
+                const l = lastname.length > 0 ? lastname.charAt(0).toUpperCase() : '';
+                initialsOnly = (f + l) || 'A';
+            }
+
+            const d = new Date();
+            const dateStr = d.toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US');
+            const timeStr = d.toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute:'2-digit', second:'2-digit', timeZoneName: 'short' });
+            const prefix = i18n[currentLang]['sig-prefix'];
+            const stampTitle = i18n[currentLang]['sig-stamp-title'];
+
+            let finalObj;
+            
+            const commonProps = { transparentCorners: false, cornerColor: '#0ea5e9', borderColor: '#0ea5e9' };
+
+            if (format === '1') {
+                // Classique
+                const leftName = new fabric.Textbox(sigName, { left: 0, top: 0, originY: 'center', width: 120, textAlign: 'center', fontSize: 20, fontStyle: 'italic', fontFamily: 'serif', fill: inkColor });
+                const vLine = new fabric.Line([130, -35, 130, 35], { stroke: inkColor, strokeWidth: 1.5, originY: 'center' });
+                const rightGroup = new fabric.Textbox(`${prefix}\n${fullName}\n${dateStr} ${timeStr}`, { left: 145, top: 0, originY: 'center', width: 160, fontSize: 10, fill: inkColor, textAlign: 'left', lineHeight: 1.4, fontWeight: 'bold', fontFamily: 'Inter' });
+                finalObj = new fabric.Group([leftName, vLine, rightGroup], { ...commonProps });
+            } 
+            else if (format === '2') {
+                // Manuscrit
+                finalObj = new fabric.Textbox(fullName, { fontSize: 32, fontStyle: 'italic', fontFamily: 'cursive, serif', fill: inkColor, textAlign: 'center', ...commonProps });
+            } 
+            else if (format === '3') {
+                // Professionnel
+                const leftName = new fabric.Textbox(fullName, { left: 0, top: 0, originY: 'center', width: 150, textAlign: 'right', fontSize: 16, fontWeight: 'bold', fontFamily: 'Inter', fill: inkColor });
+                const vLine = new fabric.Line([165, -20, 165, 20], { stroke: inkColor, strokeWidth: 1.5, originY: 'center' });
+                const rightGroup = new fabric.Textbox(`${dateStr}\n${timeStr}`, { left: 180, top: 0, originY: 'center', width: 100, fontSize: 12, fontFamily: 'monospace', fill: inkColor, textAlign: 'left', lineHeight: 1.2 });
+                finalObj = new fabric.Group([leftName, vLine, rightGroup], { ...commonProps });
+            }
+            else if (format === '4') {
+                // Initiales
+                const leftName = new fabric.Textbox(initialsOnly, { left: 0, top: 0, originY: 'center', width: 70, textAlign: 'center', fontSize: 28, fontWeight: 'bold', fontFamily: 'serif', fill: inkColor });
+                const vLine = new fabric.Line([80, -25, 80, 25], { stroke: inkColor, strokeWidth: 1.5, originY: 'center' });
+                const rightGroup = new fabric.Textbox(`${fullName}\n${dateStr}`, { left: 95, top: 0, originY: 'center', width: 140, fontSize: 12, fill: inkColor, textAlign: 'left', lineHeight: 1.3, fontWeight: 'bold', fontFamily: 'Inter' });
+                finalObj = new fabric.Group([leftName, vLine, rightGroup], { ...commonProps });
+            }
+            else if (format === '5') {
+                // Tampon
+                const textObj = new fabric.Textbox(`${stampTitle}\n${fullName}\n${dateStr} - ${timeStr}`, { left: 0, top: 0, originX: 'center', originY: 'center', fontSize: 12, fontFamily: 'Inter', fill: inkColor, textAlign: 'center', fontWeight: 'bold', lineHeight: 1.4 });
+                const pad = 12;
+                const rect = new fabric.Rect({ left: 0, top: 0, originX: 'center', originY: 'center', width: textObj.width + pad * 2, height: textObj.height + pad * 2, fill: 'transparent', stroke: inkColor, strokeWidth: 2, rx: 6, ry: 6 });
+                finalObj = new fabric.Group([rect, textObj], { ...commonProps });
+            }
+            else if (format === '6') {
+                // Minimaliste
+                finalObj = new fabric.Textbox(`${fullName} - ${dateStr}`, { fontSize: 14, fontStyle: 'italic', fontWeight: 'bold', fontFamily: 'Inter, sans-serif', fill: inkColor, textAlign: 'center', ...commonProps });
+            }
+
+            // Placement central
+            const logicalWidth = canvas.width / currentZoom;
+            const logicalHeight = canvas.height / currentZoom;
+            finalObj.set({ left: logicalWidth / 2 - (finalObj.width * finalObj.scaleX) / 2, top: logicalHeight / 2 - (finalObj.height * finalObj.scaleY) / 2 });
+
+            canvas.add(finalObj);
+            closeSignatureModal();
+            setEditMode('select');
+            canvas.setActiveObject(finalObj);
+            saveHistory();
+        };
+
+        window.toggleUpdatePanel = function() {
+            const content = document.getElementById('update-panel-content');
+            const icon = document.getElementById('update-panel-icon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                content.classList.add('flex');
+                icon.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                content.classList.remove('flex');
+                icon.classList.remove('rotate-180');
+            }
+        };
+
         window.setZoomDirect = function(newZoom) {
             if (!pdfDoc) return;
             newZoom = Math.max(0.25, Math.min(2.0, newZoom));
@@ -1485,31 +2303,33 @@
             const pageContainer = document.getElementById('page-container');
             pageContainer.style.width = (baseWidth * currentZoom) + 'px'; pageContainer.style.height = (baseHeight * currentZoom) + 'px';
             canvas.setWidth(baseWidth * currentZoom); canvas.setHeight(baseHeight * currentZoom); canvas.setZoom(currentZoom);
-            updateTextLayer(); hideContextMenu(); hideMaskContextMenu();
+            updateTextLayer(); hideMainContextMenu();
         }
     </script>
 
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then((registration) => {
-                    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') registration.update(); });
-                    setInterval(() => registration.update(), 60 * 60 * 1000);
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        if (!newWorker) return;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(newWorker);
+                if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+                    navigator.serviceWorker.register('./sw.js').then((registration) => {
+                        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') registration.update(); });
+                        setInterval(() => registration.update(), 60 * 60 * 1000);
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (!newWorker) return;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(newWorker);
+                            });
                         });
-                    });
-                }).catch((err) => console.error("Échec d'enregistrement du Service Worker :", err));
+                    }).catch((err) => console.error("Échec d'enregistrement du Service Worker :", err));
 
-                let refreshing = false;
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (refreshing) return;
-                    refreshing = true;
-                    window.location.reload();
-                });
+                    let refreshing = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (refreshing) return;
+                        refreshing = true;
+                        window.location.reload();
+                    });
+                }
             });
         }
 
